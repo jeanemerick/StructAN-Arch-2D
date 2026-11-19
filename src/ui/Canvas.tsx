@@ -206,7 +206,7 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
           key={`m-${k.id}`}
           points={sp.map((p) => `${p.x},${p.y}`).join(' ')}
           fill="none"
-          stroke={isSel ? 'var(--selected)' : resultsView ? '#9aa3b2' : 'var(--member)'}
+          stroke={isSel ? 'var(--selected)' : resultsView ? 'var(--member-dim)' : 'var(--member)'}
           strokeWidth={isSel ? 3.5 : resultsView ? 1.6 : 2.4}
           strokeLinejoin="round"
           data-member={k.id}
@@ -248,7 +248,7 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
           cx={p.x}
           cy={p.y}
           r={isSel || isStart ? 5.5 : 3.6}
-          fill={isSel || isStart ? 'var(--selected)' : '#fff'}
+          fill={isSel || isStart ? 'var(--selected)' : 'var(--glyph-fill)'}
           stroke={isSel || isStart ? 'var(--selected)' : 'var(--member)'}
           strokeWidth={1.6}
           data-node={n.id}
@@ -351,12 +351,12 @@ function GridLayer({ v, w, h, grid }: { v: ViewT; w: number; h: number; grid: nu
   for (let i = x0; i <= x1; i++) {
     const sx = v.ox + i * step * v.scale;
     const major = i % 5 === 0;
-    lines.push(<line key={`x${i}`} x1={sx} y1={0} x2={sx} y2={h} stroke={i === 0 ? '#b3bccb' : major ? 'var(--grid-major)' : 'var(--grid)'} strokeWidth={1} />);
+    lines.push(<line key={`x${i}`} x1={sx} y1={0} x2={sx} y2={h} stroke={i === 0 ? 'var(--axis)' : major ? 'var(--grid-major)' : 'var(--grid)'} strokeWidth={1} />);
   }
   for (let j = y0; j <= y1; j++) {
     const sy = v.oy - j * step * v.scale;
     const major = j % 5 === 0;
-    lines.push(<line key={`y${j}`} x1={0} y1={sy} x2={w} y2={sy} stroke={j === 0 ? '#b3bccb' : major ? 'var(--grid-major)' : 'var(--grid)'} strokeWidth={1} />);
+    lines.push(<line key={`y${j}`} x1={0} y1={sy} x2={w} y2={sy} stroke={j === 0 ? 'var(--axis)' : major ? 'var(--grid-major)' : 'var(--grid)'} strokeWidth={1} />);
   }
   return <g shapeRendering="crispEdges">{lines}</g>;
 }

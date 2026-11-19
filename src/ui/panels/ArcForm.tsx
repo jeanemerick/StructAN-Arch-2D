@@ -75,7 +75,7 @@ export function ArcFields({ draft, setDraft, sections, submitLabel, onSubmit, te
   return (
     <div>
       <Field label="Modelo pronto">
-        <select className="sel" value={draft.preset} data-testid={`${testPrefix}-preset`} onChange={(e) => update({ preset: e.target.value as Preset })}>
+        <select className="sel" id={`${testPrefix}-preset`} value={draft.preset} data-testid={`${testPrefix}-preset`} onChange={(e) => update({ preset: e.target.value as Preset })}>
           {(Object.keys(PRESET_LABEL) as Preset[]).map((p) => (
             <option key={p} value={p}>
               {PRESET_LABEL[p]}
@@ -106,6 +106,7 @@ export function ArcFields({ draft, setDraft, sections, submitLabel, onSubmit, te
           <input
             type="text"
             className="text expr"
+            id={`${testPrefix}-expr`}
             value={draft.expr}
             spellCheck={false}
             data-testid={`${testPrefix}-expr`}
@@ -130,7 +131,7 @@ export function ArcFields({ draft, setDraft, sections, submitLabel, onSubmit, te
       {sections && (
         <div style={{ marginTop: 6 }}>
           <Field label="Seção">
-            <select className="sel" value={draft.sectionId} onChange={(e) => setDraft({ ...draft, sectionId: e.target.value })}>
+            <select className="sel" id={`${testPrefix}-section`} value={draft.sectionId} onChange={(e) => setDraft({ ...draft, sectionId: e.target.value })}>
               {sections.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

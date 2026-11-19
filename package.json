@@ -9,7 +9,8 @@
     "test": "vitest run",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "build:artifact": "node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

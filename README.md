@@ -8,7 +8,20 @@ A ideia é a de uma ferramenta no espírito do Ftool, com interface mais enxuta 
 
 O programa inteiro está num único arquivo: **`docs/index.html`**. Basta abri-lo no navegador (Chrome, Edge ou Firefox) com dois cliques — não precisa de instalação nem de internet.
 
-Opcional: ativando o GitHub Pages do repositório na pasta `docs/`, a aplicação ganha um endereço público.
+### Endereço público (GitHub Pages)
+
+Para qualquer pessoa abrir pelo navegador, sem receber arquivo nenhum:
+
+1. No GitHub, abra o repositório e entre em **Settings → Pages**.
+2. Em **Source**, escolha **Deploy from a branch**.
+3. Em **Branch**, escolha o ramo que contém a pasta `docs/` e, ao lado, a pasta **/docs**. Clique em **Save**.
+4. Depois de um ou dois minutos, a aplicação fica em `https://<conta>.github.io/<repositório>/`.
+
+A cada envio de código para esse ramo, o endereço é atualizado sozinho.
+
+### Página hospedada no Claude
+
+`npm run build:artifact` gera `dist/arcada.html`, a versão preparada para publicar como página (Artifact) no claude.ai. Nela, Salvar e Exportar passam pela confirmação da plataforma, e o tema claro ou escuro acompanha o de quem abre.
 
 ## Montando um modelo
 
@@ -103,7 +116,11 @@ npm run build
 npm run smoke
 ```
 
-`npm run dev` abre o servidor de desenvolvimento; `npm test` roda os testes do núcleo; `npm run build` gera `docs/index.html`; `npm run smoke` abre o arquivo gerado no Chromium (Playwright) e confere os exemplos, as exportações e a mensagem de estrutura instável.
+```bash
+npm run build:artifact
+```
+
+`npm run dev` abre o servidor de desenvolvimento; `npm test` roda os testes do núcleo; `npm run build` gera `docs/index.html`; `npm run smoke` abre o arquivo gerado no Chromium (Playwright) e confere os exemplos, as exportações, o tema escuro e a mensagem de estrutura instável; `npm run build:artifact` gera a versão para página hospedada.
 
 Organização do código:
 

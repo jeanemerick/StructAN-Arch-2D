@@ -42,6 +42,7 @@ export function StatusBar({ view, setView, scale, setScale, showValues, setShowV
             Escala
             <input
               type="range"
+              id="scale-range"
               min={-2}
               max={2}
               step={0.05}
@@ -52,7 +53,7 @@ export function StatusBar({ view, setView, scale, setScale, showValues, setShowV
           </label>
         )}
         <label className="check">
-          <input type="checkbox" checked={showValues} onChange={(e) => setShowValues(e.target.checked)} />
+          <input type="checkbox" id="show-values" checked={showValues} onChange={(e) => setShowValues(e.target.checked)} />
           Valores
         </label>
       </div>

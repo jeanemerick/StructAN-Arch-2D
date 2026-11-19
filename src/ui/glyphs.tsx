@@ -124,13 +124,13 @@ export function SupportGlyph({ p, s, color = 'var(--member)' }: { p: Pt; s: Supp
   const parts: ReactNode[] = [];
   const tri = (dir: 'down' | 'left', rollers: boolean) => {
     if (dir === 'down') {
-      parts.push(<polygon key="t" points={`${x},${y + 3} ${x - 10},${y + 19} ${x + 10},${y + 19}`} fill="#fff" stroke={color} strokeWidth={1.5} />);
+      parts.push(<polygon key="t" points={`${x},${y + 3} ${x - 10},${y + 19} ${x + 10},${y + 19}`} fill="var(--glyph-fill)" stroke={color} strokeWidth={1.5} />);
       const base = rollers ? y + 24 : y + 19;
       if (rollers) parts.push(<line key="r" x1={x - 13} y1={y + 22} x2={x + 13} y2={y + 22} stroke={color} strokeWidth={1.5} />);
       parts.push(<line key="b" x1={x - 14} y1={base} x2={x + 14} y2={base} stroke={color} strokeWidth={1.5} />);
       parts.push(<Hatch key="h" x1={x - 14} y1={base} x2={x + 14} y2={base} dx={-5} dy={6} color={color} />);
     } else {
-      parts.push(<polygon key="t" points={`${x - 3},${y} ${x - 19},${y - 10} ${x - 19},${y + 10}`} fill="#fff" stroke={color} strokeWidth={1.5} />);
+      parts.push(<polygon key="t" points={`${x - 3},${y} ${x - 19},${y - 10} ${x - 19},${y + 10}`} fill="var(--glyph-fill)" stroke={color} strokeWidth={1.5} />);
       const base = rollers ? x - 24 : x - 19;
       if (rollers) parts.push(<line key="r" x1={x - 22} y1={y - 13} x2={x - 22} y2={y + 13} stroke={color} strokeWidth={1.5} />);
       parts.push(<line key="b" x1={base} y1={y - 14} x2={base} y2={y + 14} stroke={color} strokeWidth={1.5} />);
@@ -162,5 +162,5 @@ export function SupportGlyph({ p, s, color = 'var(--member)' }: { p: Pt; s: Supp
 
 /** Rótula desenhada sobre a barra, perto do nó (dir: unitário da barra saindo do nó, em pixels). */
 export function HingeGlyph({ p, dir }: { p: Pt; dir: Pt }) {
-  return <circle cx={p.x + dir.x * 8} cy={p.y + dir.y * 8} r={4.2} fill="#fff" stroke="var(--member)" strokeWidth={1.6} />;
+  return <circle cx={p.x + dir.x * 8} cy={p.y + dir.y * 8} r={4.2} fill="var(--glyph-fill)" stroke="var(--member)" strokeWidth={1.6} />;
 }

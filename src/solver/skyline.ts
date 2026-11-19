@@ -38,7 +38,7 @@ export class Skyline {
   }
 
   /**
-   * LDLᵀ no próprio armazenamento. Falha se o pivô de uma coluna cair abaixo de
+   * LDLᵀ no próprio armazenamento. Falha se o pivô de uma coluna ficar menor que
    * 1e-10 × a diagonal original dessa mesma coluna (perda de rigidez = mecanismo).
    * A comparação é local: rigidezes muito diferentes em outras partes da estrutura
    * não geram falso diagnóstico de instabilidade.

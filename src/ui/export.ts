@@ -3,21 +3,6 @@ import type { AnalysisOk } from '../solver/analyze';
 import { memberStations } from '../solver/diagrams';
 import { formatNumber } from './format';
 
-export function downloadBlob(name: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-export function downloadText(name: string, text: string, mime: string): void {
-  downloadBlob(name, new Blob([text], { type: `${mime};charset=utf-8` }));
-}
-
 /** CSV com separador ";" e vírgula decimal (abre direto no Excel em português). */
 export function stationsCsv(model: Model, res: AnalysisOk): string {
   const lines = ['elemento;s (m);x (m);y (m);N (kN);Q (kN);M (kN·m);dx (mm);dy (mm)'];
@@ -33,11 +18,28 @@ export function stationsCsv(model: Model, res: AnalysisOk): string {
   lines.push('');
   lines.push('nó;Rx (kN);Ry (kN);Mz (kN·m)');
   for (const r of res.reactions) lines.push([r.nodeId, formatNumber(r.fx, 4), formatNumber(r.fy, 4), formatNumber(r.mz, 4)].join(';'));
-  return '﻿' + lines.join('\r\n') + '\r\n';
+  return String.fromCharCode(0xfeff) + lines.join('\r\n') + '\r\n';
+}
+
+/** Executa fn com o tema claro ativo, para a imagem exportada sair sempre em fundo claro. */
+function withLightTheme<T>(fn: () => T): T {
+  const root = document.documentElement;
+  const prev = root.getAttribute('data-theme');
+  root.setAttribute('data-theme', 'light');
+  try {
+    return fn();
+  } finally {
+    if (prev === null) root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', prev);
+  }
 }
 
 /** Copia o SVG resolvendo as variáveis CSS, para virar imagem independente da página. */
 export function standaloneSvg(svg: SVGSVGElement): string {
+  return withLightTheme(() => buildStandaloneSvg(svg));
+}
+
+function buildStandaloneSvg(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   const css = getComputedStyle(document.documentElement);
   const resolve = (v: string) => v.replace(/var\((--[a-z0-9-]+)\)/gi, (_, name: string) => css.getPropertyValue(name).trim() || '#000');
@@ -60,7 +62,8 @@ export function standaloneSvg(svg: SVGSVGElement): string {
   return new XMLSerializer().serializeToString(clone);
 }
 
-export async function exportPng(svg: SVGSVGElement, name: string): Promise<void> {
+/** Imagem PNG (2×) da área de desenho, ou null se o navegador não conseguir gerá-la. */
+export async function pngBlob(svg: SVGSVGElement): Promise<Blob | null> {
   const xml = standaloneSvg(svg);
   const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
   try {
@@ -74,13 +77,15 @@ export async function exportPng(svg: SVGSVGElement, name: string): Promise<void>
     const canvas = document.createElement('canvas');
     canvas.width = svg.clientWidth * k;
     canvas.height = svg.clientHeight * k;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(k, k);
     ctx.drawImage(img, 0, 0);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (blob) downloadBlob(name, blob);
+    return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  } catch {
+    return null;
   } finally {
     URL.revokeObjectURL(url);
   }

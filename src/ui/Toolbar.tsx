@@ -121,8 +121,8 @@ const ICONS: Record<Tool, ReactNode> = {
   bar: (
     <svg viewBox="0 0 24 24">
       <line x1="5" y1="18" x2="19" y2="6" stroke="currentColor" strokeWidth="2.2" />
-      <circle cx="5" cy="18" r="2.6" fill="#fff" stroke="currentColor" strokeWidth="1.6" />
-      <circle cx="19" cy="6" r="2.6" fill="#fff" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="5" cy="18" r="2.6" fill="var(--panel)" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="19" cy="6" r="2.6" fill="var(--panel)" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   ),
   arc: (
@@ -173,7 +173,7 @@ export function ToolPanel({
         ))}
       </select>
       <label className="check" style={{ justifyContent: 'center' }}>
-        <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
+        <input type="checkbox" id="snap-toggle" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
         Snap
       </label>
       <hr />

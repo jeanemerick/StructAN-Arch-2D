@@ -64,7 +64,7 @@ for (const view of ['M', 'deformed']) {
 // exportações
 const [csv] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=export-menu]').then(() => page.click('[data-testid=export-csv]'))]);
 const csvText = readFileSync(await csv.path(), 'utf8');
-check(csvText.startsWith('﻿elemento;s (m)') && csvText.split('\n').length > 40, `CSV exportado (${csvText.length} caracteres)`);
+check(csvText.charCodeAt(0) === 0xfeff && csvText.slice(1).startsWith('elemento;s (m)') && csvText.split('\n').length > 40, `CSV exportado (${csvText.length} caracteres)`);
 const [png] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=export-menu]').then(() => page.click('[data-testid=export-png]'))]);
 const pngBytes = readFileSync(await png.path());
 await png.saveAs(join(outDir, 'exportado.png'));
@@ -80,6 +80,14 @@ await page.mouse.click(nodeBox.x + nodeBox.width / 2, nodeBox.y + nodeBox.height
 await page.click('[data-testid=support-free]');
 const unstable = (await page.textContent('[data-testid=status]')).trim();
 check(/instável/i.test(unstable), `viga sem apoio fixo: ${unstable}`);
+
+// tema escuro segue a preferência do sistema
+const darkPage = await browser.newPage({ viewport: { width: 1400, height: 860 }, colorScheme: 'dark' });
+await darkPage.goto(pathToFileURL(join(root, 'docs', 'index.html')).href);
+await darkPage.waitForSelector('[data-testid=status]');
+const darkBg = await darkPage.evaluate(() => getComputedStyle(document.body).backgroundColor);
+check(darkBg === 'rgb(14, 19, 26)', `tema escuro aplicado (${darkBg})`);
+await darkPage.close();
 
 check(errors.length === 0, `console sem erros (${errors.length})`);
 await browser.close();

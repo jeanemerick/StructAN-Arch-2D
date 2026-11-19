@@ -117,7 +117,7 @@ export function ResultsLayer({ model, analysis, view, v, scale, showValues, hove
       }
       const outline = [base[0], ...off, base[base.length - 1]];
       out.push(
-        <polyline key={`o-${id}`} points={outline.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#475569" strokeWidth={1.2} strokeLinejoin="round" />,
+        <polyline key={`o-${id}`} points={outline.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="var(--outline)" strokeWidth={1.2} strokeLinejoin="round" />,
       );
       if (showValues && maxAbs > 1e-9) {
         const idx = new Set([0, st.length - 1]);

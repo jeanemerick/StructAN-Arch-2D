@@ -28,6 +28,7 @@ export function ResultsTable({ model, analysis, dispatch }: { model: Model; anal
   return (
     <div data-testid="results-table">
       <h3>Reações de apoio</h3>
+      <div className="table-scroll">
       <table className="res">
         <thead>
           <tr>
@@ -48,8 +49,10 @@ export function ResultsTable({ model, analysis, dispatch }: { model: Model; anal
           ))}
         </tbody>
       </table>
+      </div>
 
       <h4>Esforços extremos por barra</h4>
+      <div className="table-scroll">
       <table className="res">
         <thead>
           <tr>
@@ -78,9 +81,11 @@ export function ResultsTable({ model, analysis, dispatch }: { model: Model; anal
           ))}
         </tbody>
       </table>
+      </div>
       <p className="help">N em kN (tração +), Q em kN, M em kN·m (+ traciona a fibra inferior da barra / a face interna do arco).</p>
 
       <h4>Deslocamento máximo</h4>
+      <div className="table-scroll">
       <table className="res">
         <tbody>
           {rows.map((r) => (
@@ -93,6 +98,7 @@ export function ResultsTable({ model, analysis, dispatch }: { model: Model; anal
           ))}
         </tbody>
       </table>
+      </div>
       {analysis.warnings.map((w, k) => (
         <p key={k} className="help status-warn">
           ⚠ {w.message}

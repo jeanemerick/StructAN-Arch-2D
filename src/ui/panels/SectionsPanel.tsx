@@ -5,13 +5,14 @@ import type { Action } from '../state';
 import { Field, NumField } from '../widgets';
 import { formatValue, UNIT } from '../format';
 
-function NameInput({ value, onCommit }: { value: string; onCommit(v: string): void }) {
+function NameInput({ id, value, onCommit }: { id: string; value: string; onCommit(v: string): void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return (
     <input
       type="text"
       className="text"
+      id={id}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => (draft.trim() ? onCommit(draft.trim()) : setDraft(value))}
@@ -44,7 +45,7 @@ export function SectionsPanel({ model, dispatch }: { model: Model; dispatch: Dis
         return (
           <div key={s.id} className="card">
             <div className="card-head">
-              <NameInput value={s.name} onCommit={(name) => apply((m) => updateSection(m, s.id, { name }))} />
+              <NameInput id={`section-name-${s.id}`} value={s.name} onCommit={(name) => apply((m) => updateSection(m, s.id, { name }))} />
               <button
                 className="btn danger"
                 title={users ? 'Seção atribuída a barras' : 'Remover seção'}
@@ -63,7 +64,7 @@ export function SectionsPanel({ model, dispatch }: { model: Model; dispatch: Dis
                 <NumField value={s.E} unit="GPa" factor={UNIT.GPa} valid={pos} onCommit={(E) => apply((m) => updateSection(m, s.id, { E }))} />
               </Field>
               <Field label="Tipo">
-                <select className="sel" value={s.shape.kind} onChange={(e) => setShape(defaultShape(e.target.value as Shape['kind'], s))}>
+                <select className="sel" id={`section-kind-${s.id}`} value={s.shape.kind} onChange={(e) => setShape(defaultShape(e.target.value as Shape['kind'], s))}>
                   {(Object.keys(SHAPE_LABEL) as Shape['kind'][]).map((k) => (
                     <option key={k} value={k}>
                       {SHAPE_LABEL[k]}

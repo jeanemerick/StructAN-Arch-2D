@@ -59,7 +59,7 @@ function LoadRow({ q, onChange, onRemove, i }: { q: DistLoad; onChange(q: DistLo
   return (
     <div className="card" data-testid={`dist-load-${i}`}>
       <div className="card-head">
-        <select className="sel" value={q.dir} onChange={(e) => onChange({ ...q, dir: e.target.value as DistLoad['dir'] })}>
+        <select className="sel" id={`dist-dir-${i}`} value={q.dir} onChange={(e) => onChange({ ...q, dir: e.target.value as DistLoad['dir'] })}>
           {(Object.keys(DIR_LABEL) as DistLoad['dir'][]).map((d) => (
             <option key={d} value={d}>
               {DIR_LABEL[d]}
@@ -117,7 +117,7 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
 
       <div className="row">
         <span className="lbl">Seção</span>
-        <select className="sel" value={member.sectionId} data-testid="member-section" onChange={(e) => apply((m) => updateMember(m, member.id, { sectionId: e.target.value }))}>
+        <select className="sel" id="member-section" value={member.sectionId} data-testid="member-section" onChange={(e) => apply((m) => updateMember(m, member.id, { sectionId: e.target.value }))}>
           {model.sections.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}

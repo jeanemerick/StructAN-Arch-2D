@@ -14,24 +14,28 @@ import { SectionsPanel } from './panels/SectionsPanel';
 import { ResultsTable } from './panels/ResultsTable';
 import { ArcFields, defaultDraft, draftError, type ArcDraft } from './panels/ArcForm';
 import { curvePolyline, type Pt } from './geometry';
-import { downloadText, exportPng, stationsCsv } from './export';
+import { pngBlob, stationsCsv } from './export';
+import { saveFile, warmUpSaver } from './saver';
 import { hotkeyTarget } from './hotkeys';
 
 const STORAGE_KEY = 'arcada:modelo';
 const START_EXAMPLE = 'arco-parabolico-biarticulado';
 
-function loadInitial(): Model {
+function loadInitial(): { model: Model; example: string | null } {
   try {
     const t = localStorage.getItem(STORAGE_KEY);
     if (t) {
       const r = parseModel(t);
-      if (r.ok) return r.model;
+      if (r.ok) return { model: r.model, example: null };
     }
   } catch {
     /* armazenamento indisponível */
   }
-  return examples.find((e) => e.slug === START_EXAMPLE)!.build();
+  const ex = examples.find((e) => e.slug === START_EXAMPLE)!;
+  return { model: ex.build(), example: ex.name };
 }
+
+const INITIAL = loadInitial();
 
 function safeAnalyze(m: Model): Analysis {
   try {
@@ -44,7 +48,8 @@ function safeAnalyze(m: Model): Analysis {
 type SideTab = 'props' | 'sections' | 'results';
 
 export default function App() {
-  const [state, dispatch] = useReducer(reducer, undefined, () => initialState(loadInitial()));
+  const [state, dispatch] = useReducer(reducer, undefined, () => initialState(INITIAL.model));
+  const [exampleName, setExampleName] = useState<string | null>(INITIAL.example);
   const { model } = state;
   const analysis = useMemo(() => safeAnalyze(model), [model]);
   const [fitKey, setFitKey] = useState(0);
@@ -54,6 +59,9 @@ export default function App() {
   const svgRef = useRef<SVGSVGElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+
+  useEffect(() => warmUpSaver(), []);
+  const save = async (name: string, blob: Blob) => setFileError(await saveFile(name, blob));
 
   // gravação automática no navegador
   useEffect(() => {
@@ -75,7 +83,8 @@ export default function App() {
     }
   };
 
-  const loadModel = (m: Model) => {
+  const loadModel = (m: Model, example: string | null = null) => {
+    setExampleName(example);
     dispatch({ type: 'load', model: m });
     dispatch({ type: 'setTool', tool: 'select' });
     setFitKey((k) => k + 1);
@@ -174,6 +183,11 @@ export default function App() {
           <br />
           4. Veja reações, N, Q, M e deformada nas abas sob o desenho.
         </p>
+        {exampleName && (
+          <p className="help" data-testid="example-note">
+            <b>Modelo de exemplo:</b> {exampleName}. Altere à vontade ou clique em Novo para começar do zero.
+          </p>
+        )}
         <p className="help">
           Modelo atual: {model.nodes.length} nós, {model.members.filter((k) => k.kind === 'bar').length} barras, {model.members.filter((k) => k.kind === 'arc').length} arcos.
         </p>
@@ -187,10 +201,24 @@ export default function App() {
       <TopBar
         onNew={() => loadModel(emptyModel())}
         onOpen={() => fileRef.current?.click()}
-        onSave={() => downloadText('arcada-modelo.json', serialize(model), 'application/json')}
-        onExample={(slug) => loadModel(examples.find((e) => e.slug === slug)!.build())}
-        onExportPng={() => svgRef.current && void exportPng(svgRef.current, `arcada-${state.view}.png`)}
-        onExportCsv={() => analysis.ok && downloadText('arcada-resultados.csv', stationsCsv(model, analysis), 'text/csv')}
+        onSave={() => void save('arcada-modelo.json', new Blob([serialize(model)], { type: 'application/json' }))}
+        onExample={(slug) => {
+          const ex = examples.find((e) => e.slug === slug)!;
+          loadModel(ex.build(), ex.name);
+        }}
+        onExportPng={() => {
+          const svg = svgRef.current;
+          if (!svg) return;
+          const name = `arcada-${state.view}.png`;
+          void pngBlob(svg).then((blob) => (blob ? save(name, blob) : setFileError('Não foi possível gerar a imagem neste navegador.')));
+        }}
+        onExportCsv={() => {
+          if (!analysis.ok) {
+            setFileError('A tabela de resultados só pode ser exportada com a análise concluída. Corrija o modelo e tente de novo.');
+            return;
+          }
+          void save('arcada-resultados.csv', new Blob([stationsCsv(model, analysis)], { type: 'text/csv;charset=utf-8' }));
+        }}
         canUndo={state.past.length > 0}
         canRedo={state.future.length > 0}
         onUndo={() => dispatch({ type: 'undo' })}
@@ -199,6 +227,7 @@ export default function App() {
       <input
         ref={fileRef}
         type="file"
+        id="file-input"
         accept=".json,application/json"
         style={{ display: 'none' }}
         data-testid="file-input"
@@ -237,10 +266,10 @@ export default function App() {
         </div>
         <div className="side-body">
           {fileError && (
-            <div className="err" style={{ marginBottom: 10 }}>
-              {fileError}{' '}
-              <button className="btn" onClick={() => setFileError(null)}>
-                ok
+            <div className="notice" role="status" data-testid="notice">
+              <span>{fileError}</span>
+              <button className="btn outline" onClick={() => setFileError(null)}>
+                Fechar
               </button>
             </div>
           )}

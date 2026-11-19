@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { parseNumber } from './format';
 
 /** Mostra um número sem ruído de ponto flutuante, com vírgula decimal. */
@@ -23,6 +23,7 @@ interface NumProps {
 
 /** Campo numérico: aceita vírgula ou ponto, aplica ao sair do campo ou com Enter. */
 export function NumField({ value, onCommit, unit, factor = 1, valid, disabled, testid, title }: NumProps) {
+  const autoId = useId();
   const shown = showNumber(value / factor);
   const [draft, setDraft] = useState(shown);
   const [bad, setBad] = useState(false);
@@ -53,6 +54,7 @@ export function NumField({ value, onCommit, unit, factor = 1, valid, disabled, t
       <input
         type="text"
         inputMode="decimal"
+        id={testid ?? autoId}
         value={draft}
         disabled={disabled}
         data-testid={testid}
@@ -88,9 +90,10 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export function Check({ checked, onChange, children, testid }: { checked: boolean; onChange(v: boolean): void; children: ReactNode; testid?: string }) {
+  const autoId = useId();
   return (
     <label className="check">
-      <input type="checkbox" checked={checked} data-testid={testid} onChange={(e) => onChange(e.target.checked)} />
+      <input type="checkbox" id={testid ?? autoId} checked={checked} data-testid={testid} onChange={(e) => onChange(e.target.checked)} />
       {children}
     </label>
   );
