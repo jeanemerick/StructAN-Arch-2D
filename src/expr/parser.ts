@@ -8,7 +8,7 @@
  *   power  := atom ('^' unary)?          // associativo à direita; -x^2 = -(x^2)
  *   atom   := número | 'x' | constante | função '(' expr ')' | '(' expr ')'
  *
- * Não usa eval nem new Function: a expressão vira uma árvore de closures.
+ * Sem eval nem new Function: a expressão vira uma árvore de closures.
  */
 
 export type Compiled =
@@ -188,7 +188,7 @@ class Parser {
         return (x) => f(arg(x));
       }
       throw new ParseError(
-        `Nome desconhecido "${t.v}" na posição ${t.pos + 1}. Use x, pi, e ou as funções ${Object.keys(FUNCS).join(', ')}`,
+        `Nome desconhecido "${t.v}" na posição ${t.pos + 1}. Nomes aceitos: x, pi, e e as funções ${Object.keys(FUNCS).join(', ')}`,
         t.pos,
       );
     }

@@ -1,6 +1,6 @@
 import { compileExpr } from '../expr/parser';
 
-/** Número de intervalos usados para amostrar a curva de um arco. */
+/** Número de intervalos na amostragem da curva de um arco. */
 export const CURVE_SAMPLES = 4096;
 
 export const NSEG_MIN = 4;

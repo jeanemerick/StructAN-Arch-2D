@@ -18,7 +18,7 @@ describe('parseNumber', () => {
 });
 
 describe('formatNumber', () => {
-  it('usa vírgula decimal e o número de casas pedido', () => {
+  it('formata com vírgula decimal e o número de casas pedido', () => {
     expect(formatNumber(1234.5, 2)).toBe('1234,50');
     expect(formatNumber(-0.125, 3)).toBe('-0,125');
     expect(formatNumber(3, 0)).toBe('3');

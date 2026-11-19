@@ -55,7 +55,7 @@ describe('modelo vazio e seções', () => {
       EI: E * 0.001,
     });
   });
-  it('addSection, updateSection e deleteSection; seção em uso não pode ser apagada', () => {
+  it('addSection, updateSection e deleteSection; seção atribuída a barras não pode ser apagada', () => {
     let m = emptyModel();
     const a = addSection(m);
     m = a.model;

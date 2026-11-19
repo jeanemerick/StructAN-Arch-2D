@@ -160,7 +160,7 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
       >
         + Adicionar carga distribuída
       </button>
-      <p className="help">Valores negativos apontam para baixo / para a esquerda / para dentro (y local negativo). Em arcos a variação é linear em x.</p>
+      <p className="help">Valores negativos: sentido −Y (gravidade), sentido −X ou para dentro da curva (y local negativo). Em arcos a variação é linear em x.</p>
 
       <h4>Inserir nó</h4>
       <div className="row">

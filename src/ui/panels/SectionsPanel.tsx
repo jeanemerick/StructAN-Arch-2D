@@ -47,7 +47,7 @@ export function SectionsPanel({ model, dispatch }: { model: Model; dispatch: Dis
               <NameInput value={s.name} onCommit={(name) => apply((m) => updateSection(m, s.id, { name }))} />
               <button
                 className="btn danger"
-                title={users ? 'Seção em uso' : 'Remover seção'}
+                title={users ? 'Seção atribuída a barras' : 'Remover seção'}
                 disabled={users > 0 || model.sections.length <= 1}
                 onClick={() => {
                   const r = deleteSection(model, s.id);

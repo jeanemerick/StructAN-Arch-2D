@@ -102,7 +102,7 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
           <NumField value={load.mz} unit="kN·m" testid="load-mz" onCommit={(mz) => setLoad({ mz })} />
         </Field>
       </div>
-      <p className="help">Fy negativo aponta para baixo; Mz positivo é anti-horário.</p>
+      <p className="help">Fy negativo segue a gravidade (sentido −Y); Mz positivo é anti-horário.</p>
 
       <div className="row" style={{ marginTop: 16 }}>
         <button className="btn outline danger" onClick={() => apply((m) => deleteNode(m, node.id))}>

@@ -15,7 +15,7 @@ export function ResultsTable({ model, analysis, dispatch }: { model: Model; anal
     return (
       <div data-testid="results-table">
         <h3>Resultados</h3>
-        <p className="help">A análise não foi concluída. Corrija os itens abaixo:</p>
+        <p className="help">A análise não foi concluída. Corrija os itens a seguir:</p>
         {analysis.issues.map((i, k) => (
           <div key={k} className="err">
             • {i.message}
@@ -78,7 +78,7 @@ export function ResultsTable({ model, analysis, dispatch }: { model: Model; anal
           ))}
         </tbody>
       </table>
-      <p className="help">N em kN (tração +), Q em kN, M em kN·m (+ traciona o lado de baixo / interno do arco).</p>
+      <p className="help">N em kN (tração +), Q em kN, M em kN·m (+ traciona a fibra inferior da barra / a face interna do arco).</p>
 
       <h4>Deslocamento máximo</h4>
       <table className="res">

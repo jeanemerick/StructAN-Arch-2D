@@ -146,7 +146,7 @@ export function ArcFields({ draft, setDraft, sections, submitLabel, onSubmit, te
         </div>
       )}
       <p className="help">
-        Use x, pi, e, + − * / ^ e as funções sqrt, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, ln, log, abs. Multiplicação sempre com * (2*x).
+        Aceita x, pi, e, + − * / ^ e as funções sqrt, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, ln, log, abs. Multiplicação sempre com * (2*x).
       </p>
       <button
         className="btn primary"

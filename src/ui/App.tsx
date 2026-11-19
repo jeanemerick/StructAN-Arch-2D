@@ -172,7 +172,7 @@ export default function App() {
           <br />
           3. <b>Selecionar</b>: clique num nó para definir apoio e cargas; numa barra para seção, rótulas e cargas distribuídas.
           <br />
-          4. Veja reações, N, Q, M e deformada nas abas abaixo do desenho.
+          4. Veja reações, N, Q, M e deformada nas abas sob o desenho.
         </p>
         <p className="help">
           Modelo atual: {model.nodes.length} nós, {model.members.filter((k) => k.kind === 'bar').length} barras, {model.members.filter((k) => k.kind === 'arc').length} arcos.

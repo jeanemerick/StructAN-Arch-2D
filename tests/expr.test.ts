@@ -52,7 +52,7 @@ describe('compileExpr — erros', () => {
     expect(c.ok).toBe(false);
     if (!c.ok) expect(c.error).toContain('*');
   });
-  it('nunca usa eval: identificadores arbitrários são rejeitados', () => {
+  it('sem eval: identificadores arbitrários são rejeitados', () => {
     const c = compileExpr('constructor');
     expect(c.ok).toBe(false);
   });

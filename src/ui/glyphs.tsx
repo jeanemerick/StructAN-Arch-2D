@@ -38,7 +38,7 @@ export function Arrow({
 
 /** Momento: arco circular em torno do ponto, anti-horário quando ccw. */
 export function MomentArrow({ p, ccw, color, r = 17 }: { p: Pt; ccw: boolean; color: string; r?: number }) {
-  // na tela o eixo y aponta para baixo: anti-horário visual = sweep 0
+  // na tela o eixo y é invertido: anti-horário visual = sweep 0
   const a0 = (-40 * Math.PI) / 180;
   const a1 = (220 * Math.PI) / 180;
   const start = { x: p.x + r * Math.cos(a0), y: p.y - r * Math.sin(a0) };

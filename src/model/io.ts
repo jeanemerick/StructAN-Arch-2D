@@ -116,7 +116,7 @@ export function parseModel(text: string): { ok: true; model: Model } | { ok: fal
         loads: k.loads.map((l, j) => parseDist(l, `${w}.loads[${j}]`)),
       };
       if (!nodeIds.has(base.ni) || !nodeIds.has(base.nj)) throw new FormatError(`A barra ${base.id} liga um nó inexistente`);
-      if (!sectionIds.has(base.sectionId)) throw new FormatError(`A barra ${base.id} usa uma seção inexistente`);
+      if (!sectionIds.has(base.sectionId)) throw new FormatError(`A barra ${base.id} aponta para uma seção inexistente`);
       if (k.kind === 'bar') return { kind: 'bar', ...base };
       if (k.kind === 'arc') return { kind: 'arc', ...base, expr: str(k.expr, `${w}.expr`), nSeg: num(k.nSeg, `${w}.nSeg`) };
       throw new FormatError(`Tipo de barra desconhecido em ${w}`);

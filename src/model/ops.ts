@@ -1,7 +1,7 @@
 import type { Arc, DistLoad, Id, Member, MemberBase, Model, NodalLoad, Node, Section, Support } from './types';
 import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
 
-/** Distância abaixo da qual dois nós são considerados o mesmo ponto (m). */
+/** Distância máxima para considerar dois nós o mesmo ponto (m). */
 export const MERGE_TOL = 1e-6;
 
 export function emptyModel(): Model {

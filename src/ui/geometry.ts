@@ -1,7 +1,7 @@
 import type { Id, Member, Model } from '../model/types';
 import { compileArcCurve } from '../model/curve';
 
-/** Transformação mundo (m, Y para cima) → tela (px, Y para baixo). */
+/** Transformação mundo (m, Y para cima) → tela (px, Y invertido). */
 export interface ViewT {
   scale: number;
   ox: number;
