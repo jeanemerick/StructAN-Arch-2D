@@ -18,7 +18,7 @@ import { pngBlob, stationsCsv } from './export';
 import { saveFile, warmUpSaver } from './saver';
 import { hotkeyTarget } from './hotkeys';
 
-const STORAGE_KEY = 'arcada:modelo';
+const STORAGE_KEY = 'structan-arch-2d:modelo';
 const START_EXAMPLE = 'arco-parabolico-biarticulado';
 
 function loadInitial(): { model: Model; example: string | null } {
@@ -201,7 +201,7 @@ export default function App() {
       <TopBar
         onNew={() => loadModel(emptyModel())}
         onOpen={() => fileRef.current?.click()}
-        onSave={() => void save('arcada-modelo.json', new Blob([serialize(model)], { type: 'application/json' }))}
+        onSave={() => void save('structan-arch-2d-modelo.json', new Blob([serialize(model)], { type: 'application/json' }))}
         onExample={(slug) => {
           const ex = examples.find((e) => e.slug === slug)!;
           loadModel(ex.build(), ex.name);
@@ -209,7 +209,7 @@ export default function App() {
         onExportPng={() => {
           const svg = svgRef.current;
           if (!svg) return;
-          const name = `arcada-${state.view}.png`;
+          const name = `structan-arch-2d-${state.view}.png`;
           void pngBlob(svg).then((blob) => (blob ? save(name, blob) : setFileError('Não foi possível gerar a imagem neste navegador.')));
         }}
         onExportCsv={() => {
@@ -217,7 +217,7 @@ export default function App() {
             setFileError('A tabela de resultados só pode ser exportada com a análise concluída. Corrija o modelo e tente de novo.');
             return;
           }
-          void save('arcada-resultados.csv', new Blob([stationsCsv(model, analysis)], { type: 'text/csv;charset=utf-8' }));
+          void save('structan-arch-2d-resultados.csv', new Blob([stationsCsv(model, analysis)], { type: 'text/csv;charset=utf-8' }));
         }}
         canUndo={state.past.length > 0}
         canRedo={state.future.length > 0}

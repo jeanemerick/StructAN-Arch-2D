@@ -21,7 +21,7 @@ A cada envio de código para esse ramo, o endereço é atualizado sozinho.
 
 ### Página hospedada no Claude
 
-`npm run build:artifact` gera `dist/arcada.html`, a versão preparada para publicar como página (Artifact) no claude.ai. Nela, Salvar e Exportar passam pela confirmação da plataforma, e o tema claro ou escuro acompanha o de quem abre.
+`npm run build:artifact` gera `dist/structan-arch-2d.html`, a versão preparada para publicar como página (Artifact) no claude.ai. Nela, Salvar e Exportar passam pela confirmação da plataforma, e o tema claro ou escuro acompanha o de quem abre.
 
 ## Montando um modelo
 

@@ -1,5 +1,5 @@
 {
-  "name": "arcada",
+  "name": "structan-arch-2d",
   "private": true,
   "version": "0.1.0",
   "description": "Análise estrutural 2D de barras e arcos definidos por equação",

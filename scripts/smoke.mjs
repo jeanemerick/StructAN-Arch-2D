@@ -19,7 +19,7 @@ function loadPlaywright() {
 const { chromium } = loadPlaywright();
 
 const root = resolve(new URL('..', import.meta.url).pathname);
-const outDir = resolve(process.argv[2] ?? join(tmpdir(), 'arcada-smoke'));
+const outDir = resolve(process.argv[2] ?? join(tmpdir(), 'structan-arch-2d-smoke'));
 mkdirSync(outDir, { recursive: true });
 
 const EXAMPLES = ['viga-biapoiada', 'portico-plano', 'arco-parabolico-biarticulado', 'arco-triarticulado', 'arco-atirantado'];

@@ -44,7 +44,7 @@ export function TopBar(p: TopProps) {
           <path d="M3 19 Q12 1 21 19" fill="none" stroke="var(--accent)" strokeWidth="2.4" />
           <line x1="2" y1="19.5" x2="22" y2="19.5" stroke="var(--ink)" strokeWidth="1.6" />
         </svg>
-        Arcada <small>análise 2D</small>
+        StructAN-Arch-2D <small>análise estrutural</small>
       </div>
       <button className="btn" onClick={p.onNew} data-testid="file-new">
         Novo

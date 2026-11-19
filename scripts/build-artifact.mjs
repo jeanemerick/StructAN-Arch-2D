@@ -3,15 +3,15 @@
 //   - é um fragmento (sem <html>, <head>, <body>): a plataforma acrescenta o esqueleto do documento;
 //   - o React vem do cdnjs em vez de ir embutido;
 //   - as fontes Inter e Space Grotesk vêm do Google Fonts (com pilha de reserva do sistema).
-// Execução: node scripts/build-artifact.mjs [arquivo-de-saída]   (padrão: dist/arcada.html)
+// Execução: node scripts/build-artifact.mjs [arquivo-de-saída]   (padrão: dist/structan-arch-2d.html)
 import { build } from 'vite';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
-const out = resolve(process.argv[2] ?? join(root, 'dist', 'arcada.html'));
-const tmp = mkdtempSync(join(tmpdir(), 'arcada-artifact-'));
+const out = resolve(process.argv[2] ?? join(root, 'dist', 'structan-arch-2d.html'));
+const tmp = mkdtempSync(join(tmpdir(), 'structan-arch-2d-artifact-'));
 
 const REACT = 'https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js';
 const REACT_DOM = 'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js';
@@ -46,7 +46,7 @@ try {
   if (/^\s*import\s/m.test(js)) throw new Error('o pacote ainda contém import: o React não foi externalizado');
 
   const html = [
-    '<title>Arcada</title>',
+    '<title>StructAN-Arch-2D</title>',
     '<meta name="claude:viewport-fit-sides" content="cover">',
     `<link rel="stylesheet" href="${FONTS}">`,
     `<style>${css.trim()}</style>`,
