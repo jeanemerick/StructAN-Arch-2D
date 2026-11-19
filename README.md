@@ -1,4 +1,4 @@
-# Arcada — análise estrutural 2D de pórticos e arcos
+# StructAN-Arch-2D — análise estrutural 2D de pórticos e arcos
 
 Aplicação para análise linear elástica de estruturas reticuladas planas (vigas, pórticos, treliças e **arcos definidos por uma equação y = f(x)**). Calcula reações de apoio, esforço normal (N), esforço cortante (Q), momento fletor (M) e a configuração deformada.
 
