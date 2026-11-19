@@ -30,6 +30,7 @@ try {
       cssCodeSplit: false,
       modulePreload: false,
       rollupOptions: {
+        input: join(root, 'app.html'),
         external: ['react', 'react-dom/client'],
         output: {
           format: 'iife',

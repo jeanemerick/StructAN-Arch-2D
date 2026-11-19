@@ -14,7 +14,7 @@ Para qualquer pessoa abrir pelo navegador, sem receber arquivo nenhum:
 
 1. No GitHub, abra o repositório e entre em **Settings → Pages**.
 2. Em **Source**, escolha **Deploy from a branch**.
-3. Em **Branch**, escolha o ramo que contém a pasta `docs/` e, ao lado, a pasta **/docs**. Clique em **Save**.
+3. Em **Branch**, escolha `main` e, ao lado, a pasta **/docs** (a pasta **/ (root)** também funciona: o `index.html` da raiz leva ao programa). Clique em **Save**.
 4. Depois de um ou dois minutos, a aplicação fica em `https://<conta>.github.io/<repositório>/`.
 
 A cada envio de código para esse ramo, o endereço é atualizado sozinho.
@@ -132,4 +132,6 @@ src/ui/        interface React + SVG
 tests/         testes automáticos (Vitest)
 scripts/       teste de ponta a ponta
 docs/          aplicação pronta (arquivo único) e plano de desenvolvimento
+app.html       entrada de desenvolvimento (Vite)
+index.html     página da raiz: só redireciona para docs/index.html
 ```
