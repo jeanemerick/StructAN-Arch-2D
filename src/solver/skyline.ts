@@ -37,13 +37,16 @@ export class Skyline {
     return this.a[this.idx(i, i)];
   }
 
-  /** LDLᵀ no próprio armazenamento. Falha se algum pivô ≤ 1e-10 × maior diagonal. */
+  /**
+   * LDLᵀ no próprio armazenamento. Falha se o pivô de uma coluna cair abaixo de
+   * 1e-10 × a diagonal original dessa mesma coluna (perda de rigidez = mecanismo).
+   * A comparação é local: rigidezes muito diferentes em outras partes da estrutura
+   * não geram falso diagnóstico de instabilidade.
+   */
   factor(): { ok: true } | { ok: false; index: number } {
     const { n, first, a } = this;
-    let maxDiag = 0;
-    for (let j = 0; j < n; j++) maxDiag = Math.max(maxDiag, Math.abs(this.diag(j)));
-    const tol = 1e-10 * (maxDiag > 0 ? maxDiag : 1);
     for (let j = 0; j < n; j++) {
+      const tol = 1e-10 * Math.abs(this.diag(j));
       const fj = first[j];
       const sj = this.start[j] - fj; // a[sj + i] = elemento (i, j)
       // g_ij = a_ij − Σ l_ri g_rj
@@ -63,7 +66,7 @@ export class Skyline {
         d -= l * g;
         a[sj + r] = l;
       }
-      if (!(d > tol)) return { ok: false, index: j };
+      if (!(d > tol) || !(d > 0)) return { ok: false, index: j };
       a[sj + j] = d;
     }
     this.factored = true;

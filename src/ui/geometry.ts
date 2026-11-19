@@ -121,3 +121,24 @@ export function hitTest(m: Model, x: number, y: number, tol: number, polylines?:
   }
   return best ? { kind: 'member', id: best.id, at: best.at } : null;
 }
+
+/**
+ * Leva a posição de um clique sobre a barra/arco para a grade: no arco, a abscissa x;
+ * na barra, a coordenada dominante (x se a barra for mais horizontal, y se mais vertical).
+ * `at` é a fração (barra) ou a abscissa (arco); se a grade cair fora do interior, devolve `at`.
+ */
+export function snapAlongMember(m: Model, k: Member, at: number, grid: number): number {
+  const ni = m.nodes.find((n) => n.id === k.ni);
+  const nj = m.nodes.find((n) => n.id === k.nj);
+  if (!ni || !nj || !(grid > 0)) return at;
+  const snap = (v: number) => Math.round(v / grid) * grid;
+  if (k.kind === 'arc') {
+    const x = snap(at);
+    const eps = 1e-3 * (nj.x - ni.x);
+    return x > ni.x + eps && x < nj.x - eps ? x : at;
+  }
+  const dx = nj.x - ni.x;
+  const dy = nj.y - ni.y;
+  const t = Math.abs(dx) >= Math.abs(dy) ? (snap(ni.x + dx * at) - ni.x) / dx : (snap(ni.y + dy * at) - ni.y) / dy;
+  return t > 1e-3 && t < 1 - 1e-3 ? t : at;
+}

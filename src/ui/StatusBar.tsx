@@ -69,7 +69,12 @@ export function StatusBar({ view, setView, scale, setScale, showValues, setShowV
             {first?.message}
           </button>
         )}
-        {warnings > 0 && <span className="status-warn">⚠ {warnings} aviso(s) — veja a aba Resultados</span>}
+        {analysis.ok && warnings > 0 && (
+          <button className="status status-warn" data-testid="warning" style={{ cursor: 'pointer' }} onClick={() => onIssue(analysis.warnings[0])} title="Clique para selecionar o item">
+            ⚠ {analysis.warnings[0].message}
+            {warnings > 1 ? ` (+${warnings - 1} aviso${warnings > 2 ? 's' : ''} na aba Resultados)` : ''}
+          </button>
+        )}
       </div>
     </footer>
   );

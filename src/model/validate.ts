@@ -1,6 +1,6 @@
 import type { Issue, Model } from './types';
 import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
-import { sectionArea } from './ops';
+import { nodesOnSegment, sectionArea } from './ops';
 
 /** Tolerância para considerar o nó sobre a curva do arco (m). */
 const ON_CURVE_TOL = 1e-5;
@@ -81,6 +81,31 @@ export function validateModel(m: Model): Issue[] {
   if (m.members.length > 0) {
     const supported = m.nodes.some((n) => n.support && (n.support.rx || n.support.ry || n.support.rz || n.support.kx || n.support.ky || n.support.kz));
     if (!supported) issues.push({ severity: 'error', message: 'A estrutura não tem apoios' });
+  }
+
+  // nó sobre o interior de uma barra ou arco sem estar ligado a ela/ele
+  for (const k of m.members) {
+    const ni = nodes.get(k.ni);
+    const nj = nodes.get(k.nj);
+    if (!ni || !nj) continue;
+    let loose: string[] = [];
+    if (k.kind === 'bar') {
+      loose = nodesOnSegment(m, ni, nj).map((p) => p.id);
+    } else {
+      const c = compileArcCurve(k.expr, ni.x, nj.x);
+      if (!c.ok) continue;
+      const tol = 1e-6 * Math.max(1, nj.x - ni.x);
+      loose = m.nodes
+        .filter((n) => n.id !== ni.id && n.id !== nj.id && n.x > ni.x + tol && n.x < nj.x - tol && Math.abs(c.fn(n.x) - n.y) <= tol)
+        .map((n) => n.id);
+    }
+    for (const id of loose) {
+      issues.push({
+        severity: 'warning',
+        message: `O nó ${id} está sobre ${k.kind === 'arc' ? 'o arco' : 'a barra'} ${k.id} mas não está ligado a ${k.kind === 'arc' ? 'ele' : 'ela'}. Para ligar, selecione ${k.kind === 'arc' ? 'o arco' : 'a barra'} e insira um nó nesse ponto.`,
+        target: { kind: 'node', id },
+      });
+    }
   }
 
   const connected = new Set<string>();

@@ -3,7 +3,7 @@ import type { DistLoad, Id, Member, Model } from '../model/types';
 import { addBar, addNode, splitMember } from '../model/ops';
 import type { Analysis } from '../solver/analyze';
 import type { Action, UiState } from './state';
-import { fitView, hitTest, memberPolyline, modelBounds, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
+import { fitView, hitTest, memberPolyline, modelBounds, snapAlongMember, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
 import { Arrow, HingeGlyph, Label, MomentArrow, SupportGlyph } from './glyphs';
 import { formatValue } from './format';
 import { ResultsLayer, type HoverInfo } from './ResultsLayer';
@@ -108,9 +108,8 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     const hit = hitTest(model, raw.x, raw.y, tol, polylines);
     if (hit?.kind === 'node') return { model, id: hit.id };
     if (hit?.kind === 'member') {
-      const exact = hitTest(model, snapped.x, snapped.y, 1e-6, polylines);
-      const at = exact?.kind === 'member' && exact.id === hit.id ? exact.at : hit.at;
       const mem = model.members.find((k) => k.id === hit.id)!;
+      const at = state.snap ? snapAlongMember(model, mem, hit.at, state.grid) : hit.at;
       if (!insideMember(model, mem, at)) return null;
       const s = splitMember(model, hit.id, at);
       return { model: s.model, id: s.nodeId };

@@ -117,19 +117,49 @@ function newMemberId(m: Model): Id {
   return nextId('m', m.members.map((k) => k.id));
 }
 
+/**
+ * Nós (exceto as extremidades) sobre o interior do segmento a–b, ordenados de a para b,
+ * com o parâmetro t ∈ (0, 1) de cada um.
+ */
+export function nodesOnSegment(m: Model, a: Node, b: Node): { id: Id; t: number }[] {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const L2 = dx * dx + dy * dy;
+  if (L2 === 0) return [];
+  const tol = 1e-6 * Math.max(1, Math.sqrt(L2));
+  const out: { id: Id; t: number }[] = [];
+  for (const n of m.nodes) {
+    if (n.id === a.id || n.id === b.id) continue;
+    const t = ((n.x - a.x) * dx + (n.y - a.y) * dy) / L2;
+    if (t <= 1e-9 || t >= 1 - 1e-9) continue;
+    if (Math.hypot(a.x + dx * t - n.x, a.y + dy * t - n.y) <= tol) out.push({ id: n.id, t });
+  }
+  return out.sort((p, q) => p.t - q.t);
+}
+
+/** Cria a barra ni–nj; se ela passar sobre nós existentes, é dividida neles. Devolve o id do primeiro trecho. */
 export function addBar(m: Model, ni: Id, nj: Id, sectionId?: Id): { model: Model; id: Id } {
-  const id = newMemberId(m);
-  const bar: Member = {
-    kind: 'bar',
-    id,
-    ni,
-    nj,
-    sectionId: sectionId ?? m.sections[0].id,
-    hingeI: false,
-    hingeJ: false,
-    loads: [],
-  };
-  return { model: { ...m, members: [...m.members, bar] }, id };
+  const a = m.nodes.find((n) => n.id === ni);
+  const b = m.nodes.find((n) => n.id === nj);
+  const chain = a && b ? [ni, ...nodesOnSegment(m, a, b).map((p) => p.id), nj] : [ni, nj];
+  let out = m;
+  let firstId = '';
+  for (let i = 0; i + 1 < chain.length; i++) {
+    const id = newMemberId(out);
+    if (!firstId) firstId = id;
+    const bar: Member = {
+      kind: 'bar',
+      id,
+      ni: chain[i],
+      nj: chain[i + 1],
+      sectionId: sectionId ?? m.sections[0].id,
+      hingeI: false,
+      hingeJ: false,
+      loads: [],
+    };
+    out = { ...out, members: [...out.members, bar] };
+  }
+  return { model: out, id: firstId };
 }
 
 export type MemberPatch = Partial<Pick<MemberBase, 'sectionId' | 'hingeI' | 'hingeJ' | 'loads'>>;

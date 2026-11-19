@@ -15,6 +15,7 @@ import { ResultsTable } from './panels/ResultsTable';
 import { ArcFields, defaultDraft, draftError, type ArcDraft } from './panels/ArcForm';
 import { curvePolyline, type Pt } from './geometry';
 import { downloadText, exportPng, stationsCsv } from './export';
+import { hotkeyTarget } from './hotkeys';
 
 const STORAGE_KEY = 'arcada:modelo';
 const START_EXAMPLE = 'arco-parabolico-biarticulado';
@@ -85,10 +86,10 @@ export default function App() {
   stateRef.current = state;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      const typing = t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement;
+      const scope = hotkeyTarget(e.target as HTMLInputElement | null);
+      if (scope === 'text') return;
       const s = stateRef.current;
-      if ((e.ctrlKey || e.metaKey) && !typing) {
+      if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase();
         if (k === 'z' && !e.shiftKey) {
           e.preventDefault();
@@ -99,7 +100,6 @@ export default function App() {
         }
         return;
       }
-      if (typing) return;
       if (e.key === 'Escape') {
         if (s.barStart) dispatch({ type: 'set', patch: { barStart: null } });
         else dispatch({ type: 'select', selection: null });
@@ -108,7 +108,7 @@ export default function App() {
         if (!sel) return;
         e.preventDefault();
         dispatch({ type: 'apply', fn: (m) => (sel.kind === 'node' ? deleteNode(m, sel.id) : deleteMember(m, sel.id)) });
-      } else if (!e.altKey) {
+      } else if (!e.altKey && scope !== 'select') {
         const map: Record<string, Tool> = { v: 'select', n: 'node', b: 'bar', a: 'arc' };
         const tool = map[e.key.toLowerCase()];
         if (tool) setTool(tool);

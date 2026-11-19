@@ -17,17 +17,21 @@ export type Compiled =
 
 type Fn = (x: number) => number;
 
+/** Valor levemente fora do domínio por arredondamento (ex.: 1,21 − 1,1² = −2e-16) é trazido para a borda. */
+const ROUND_TOL = 1e-9;
+const clampUnit = (v: number) => (Math.abs(v) > 1 && Math.abs(v) < 1 + ROUND_TOL ? Math.sign(v) : v);
+
 const FUNCS: Record<string, (v: number) => number> = {
   sin: Math.sin,
   cos: Math.cos,
   tan: Math.tan,
-  asin: Math.asin,
-  acos: Math.acos,
+  asin: (v) => Math.asin(clampUnit(v)),
+  acos: (v) => Math.acos(clampUnit(v)),
   atan: Math.atan,
   sinh: Math.sinh,
   cosh: Math.cosh,
   tanh: Math.tanh,
-  sqrt: Math.sqrt,
+  sqrt: (v) => (v < 0 && v > -ROUND_TOL ? 0 : Math.sqrt(v)),
   abs: Math.abs,
   exp: Math.exp,
   ln: Math.log,
