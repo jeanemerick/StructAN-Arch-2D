@@ -81,10 +81,78 @@ function arcoAtirantado(): Model {
   return setSupport(m, arc.nj, ROLLER);
 }
 
+/** Arco da imagem 1: parábola de vão 6 m e altura 1,5 m, triarticulado, q = 10 kN/m por projeção. */
+function arcoTriarticuladoFaixa(): Model {
+  let m = updateSection(emptyModel(), 's1', { name: 'Arco 20×40' });
+  const r = arcOrThrow(addArc(m, { expr: parabola(0, 0, 6, 1.5), xi: 0, xj: 6, nSeg: 40, sectionId: 's1' }));
+  const arc = r.model.members[0];
+  const s = splitMember(r.model, r.id, 3);
+  m = s.model;
+  const [left, right] = m.members;
+  m = updateMember(m, left.id, { hingeJ: true, loads: [projQ(-10)] });
+  m = updateMember(m, right.id, { loads: [projQ(-10)] });
+  m = setSupport(m, arc.ni, PIN);
+  return setSupport(m, arc.nj, PIN);
+}
+
+/**
+ * Pórtico de duas águas da imagem 2: três pilares engastados de 4 m, espaçados de 4 m; o central
+ * sobe até a cumeeira (3 m acima). Águas somente flexão (EI), tirantes somente axiais (EA).
+ * Cargas da figura são simbólicas: 10 kN/m vertical por projeção na água esquerda e 5 kN/m
+ * horizontal no pilar direito, apontando para a estrutura; recalque de 1 cm (−Y) no apoio esquerdo.
+ */
+function porticoDuasAguasTirantes(): Model {
+  let m = updateSection(emptyModel(), 's1', { name: 'Pilar 20×40' });
+  const agua = addSection(m, { name: 'Água (EI = 20 000 kN·m²)', shape: { kind: 'direct', EA: 0, EI: 20000 } });
+  const tir = addSection(agua.model, { name: 'Tirante (EA = 40 000 kN)', shape: { kind: 'direct', EA: 40000, EI: 0 } });
+  m = tir.model;
+  const at: Record<string, string> = {};
+  for (const [k, x, y] of [
+    ['A', 0, 0],
+    ['B', 4, 0],
+    ['C', 8, 0],
+    ['D', 0, 4],
+    ['E', 4, 4],
+    ['F', 8, 4],
+    ['G', 4, 7],
+  ] as const) {
+    const r = addNode(m, x, y);
+    m = r.model;
+    at[k] = r.id;
+  }
+  const bar = (a: string, b: string, sec?: string) => {
+    const r = addBar(m, at[a], at[b], sec);
+    m = r.model;
+    return r.id;
+  };
+  bar('A', 'D');
+  bar('B', 'E');
+  bar('E', 'G');
+  const right = bar('C', 'F');
+  const slopeL = bar('D', 'G', agua.id);
+  const slopeR = bar('G', 'F', agua.id);
+  const tie1 = bar('D', 'E', tir.id);
+  const tie2 = bar('E', 'F', tir.id);
+  m = updateMember(m, slopeL, { behavior: 'bending', loads: [projQ(-10)] });
+  m = updateMember(m, slopeR, { behavior: 'bending' });
+  m = updateMember(m, tie1, { behavior: 'axial' });
+  m = updateMember(m, tie2, { behavior: 'axial' });
+  m = updateMember(m, right, { loads: [{ dir: 'globalX', ref: 'length', qi: -5, qj: -5 }] });
+  m = setSupport(m, at.A, { ...FIX, dy: -0.01 });
+  m = setSupport(m, at.B, FIX);
+  return setSupport(m, at.C, FIX);
+}
+
 export const examples: { slug: string; name: string; build(): Model }[] = [
   { slug: 'viga-biapoiada', name: 'Viga biapoiada', build: vigaBiapoiada },
   { slug: 'portico-plano', name: 'Pórtico plano', build: porticoPlano },
   { slug: 'arco-parabolico-biarticulado', name: 'Arco parabólico biarticulado', build: arcoParabolicoBiarticulado },
   { slug: 'arco-triarticulado', name: 'Arco triarticulado (carga em meio vão)', build: arcoTriarticulado },
   { slug: 'arco-atirantado', name: 'Arco atirantado', build: arcoAtirantado },
+  { slug: 'arco-triarticulado-faixa', name: 'Arco triarticulado com carga em faixa (q = 10 kN/m, vão 6 m)', build: arcoTriarticuladoFaixa },
+  {
+    slug: 'portico-duas-aguas-tirantes',
+    name: 'Pórtico de duas águas com tirantes (10 kN/m na água esquerda, 5 kN/m no pilar direito)',
+    build: porticoDuasAguasTirantes,
+  },
 ];

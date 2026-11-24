@@ -1,5 +1,5 @@
 import { useEffect, useState, type Dispatch } from 'react';
-import type { Arc, DistLoad, Member, Model } from '../../model/types';
+import type { Arc, Behavior, DistLoad, Member, Model, Thermal } from '../../model/types';
 import { deleteMember, splitMember, updateArc, updateMember } from '../../model/ops';
 import type { Action } from '../state';
 import { Check, Field, NumField } from '../widgets';
@@ -12,6 +12,18 @@ const DIR_LABEL: Record<DistLoad['dir'], string> = {
   globalX: 'Horizontal (X global)',
   localY: 'Normal ao eixo (y local)',
   localX: 'Tangente ao eixo (x local)',
+};
+
+const BEHAVIOR_LABEL: Record<Behavior, string> = {
+  frame: 'Pórtico',
+  axial: 'Somente axial (tirante/escora)',
+  bending: 'Somente flexão (inextensível)',
+};
+
+const BEHAVIOR_HELP: Record<Behavior, string> = {
+  frame: 'Resiste a esforço normal e a flexão (EA e EI).',
+  axial: 'Só esforço normal (EA). É sempre birrotulada e não transmite momento às outras barras.',
+  bending: 'Só flexão (EI): o comprimento não muda, pois a deformação axial é desprezada.',
 };
 
 function memberLength(m: Model, k: Member): number {
@@ -104,6 +116,10 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
   if (!ni || !nj) return null;
 
   const setLoads = (loads: DistLoad[]) => apply((m) => updateMember(m, member.id, { loads }));
+  const setThermal = (p: Partial<Thermal>) => {
+    const next = { tExt: member.thermal?.tExt ?? 0, tInt: member.thermal?.tInt ?? 0, ...p };
+    apply((m) => updateMember(m, member.id, { thermal: next.tExt === 0 && next.tInt === 0 ? undefined : next }));
+  };
   const splitValid = isArc ? splitAt > ni.x && splitAt < nj.x : splitAt > 0 && splitAt < 1;
 
   return (
@@ -126,13 +142,38 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
         </select>
       </div>
       <div className="row">
+        <span className="lbl">Tipo de barra</span>
+        <select
+          className="sel"
+          id="member-behavior"
+          data-testid="member-behavior"
+          value={member.behavior}
+          onChange={(e) => apply((m) => updateMember(m, member.id, { behavior: e.target.value as Behavior }))}
+        >
+          {(Object.keys(BEHAVIOR_LABEL) as Behavior[])
+            .filter((b) => !isArc || b !== 'axial')
+            .map((b) => (
+              <option key={b} value={b}>
+                {BEHAVIOR_LABEL[b]}
+              </option>
+            ))}
+        </select>
+      </div>
+      <p className="help">{BEHAVIOR_HELP[member.behavior]}</p>
+      <div className="row">
         <span className="lbl">Rótulas</span>
-        <Check checked={member.hingeI} testid="hinge-i" onChange={(v) => apply((m) => updateMember(m, member.id, { hingeI: v }))}>
-          no início
-        </Check>
-        <Check checked={member.hingeJ} testid="hinge-j" onChange={(v) => apply((m) => updateMember(m, member.id, { hingeJ: v }))}>
-          no fim
-        </Check>
+        {member.behavior === 'axial' ? (
+          <span className="help">nas duas pontas (barra somente axial)</span>
+        ) : (
+          <>
+            <Check checked={member.hingeI} testid="hinge-i" onChange={(v) => apply((m) => updateMember(m, member.id, { hingeI: v }))}>
+              no início
+            </Check>
+            <Check checked={member.hingeJ} testid="hinge-j" onChange={(v) => apply((m) => updateMember(m, member.id, { hingeJ: v }))}>
+              no fim
+            </Check>
+          </>
+        )}
       </div>
 
       {member.kind === 'arc' && (
@@ -161,6 +202,20 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
         + Adicionar carga distribuída
       </button>
       <p className="help">Valores negativos: sentido −Y (gravidade), sentido −X ou para dentro da curva (y local negativo). Em arcos a variação é linear em x.</p>
+
+      <h4>Temperatura</h4>
+      <div className="grid2">
+        <Field label="Face externa (+y)">
+          <NumField value={member.thermal?.tExt ?? 0} unit="°C" testid="temp-ext" onCommit={(tExt) => setThermal({ tExt })} />
+        </Field>
+        <Field label="Face interna (−y)">
+          <NumField value={member.thermal?.tInt ?? 0} unit="°C" testid="temp-int" onCommit={(tInt) => setThermal({ tInt })} />
+        </Field>
+      </div>
+      <p className="help">
+        Variação em relação à temperatura de referência. Face externa: lado +y local ({isArc ? 'extradorso do arco' : 'topo da barra desenhada da esquerda para a direita'}). Parte
+        uniforme = média das duas; gradiente = (interna − externa)/h.
+      </p>
 
       <h4>Inserir nó</h4>
       <div className="row">

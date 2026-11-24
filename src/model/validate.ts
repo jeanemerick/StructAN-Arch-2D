@@ -1,12 +1,31 @@
 import type { Issue, Model } from './types';
 import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
-import { membersThrough, sectionArea } from './ops';
+import type { Behavior, Section } from './types';
+import { membersThrough, sectionHeight, sectionProps } from './ops';
 
 /** Tolerância para considerar o nó sobre a curva do arco (m). */
 const ON_CURVE_TOL = 1e-5;
 
 function fmt(v: number, d = 3): string {
   return v.toFixed(d).replace('.', ',');
+}
+
+/** Mensagem quando a seção não tem as rigidezes que o tipo de barra exige; null se estiver tudo certo. */
+function sectionProblem(sec: Section, behavior: Behavior, memberId: string): string | null {
+  const { EA, EI } = sectionProps(sec);
+  const needEA = behavior !== 'bending';
+  const needEI = behavior !== 'axial';
+  const okEA = !needEA || EA > 0;
+  const okEI = !needEI || EI > 0;
+  const forWhat = behavior === 'axial' ? ` (a barra ${memberId} é somente axial)` : behavior === 'bending' ? ` (a barra ${memberId} é somente flexão)` : '';
+  if (sec.shape.kind === 'direct') {
+    if (okEA && okEI) return null;
+    const what = needEA && needEI ? 'EA e EI positivos' : needEA ? 'EA positivo' : 'EI positivo';
+    return `A seção "${sec.name}" (rigidez direta) precisa de ${what}${forWhat}`;
+  }
+  if (sec.E > 0 && okEA && okEI) return null;
+  const what = needEA && needEI ? 'E, área e inércia positivos' : needEA ? 'E e área positivos' : 'E e inércia positivos';
+  return `A seção "${sec.name}" precisa de ${what}${forWhat}`;
 }
 
 export function validateModel(m: Model): Issue[] {
@@ -18,9 +37,25 @@ export function validateModel(m: Model): Issue[] {
     issues.push({ severity: 'error', message: 'O modelo não tem barras. Desenhe nós e barras para começar.' });
   }
 
+  const DIRS = [
+    ['rx', 'kx', 'dx', 'X'],
+    ['ry', 'ky', 'dy', 'Y'],
+    ['rz', 'kz', 'dz', 'rotação'],
+  ] as const;
   for (const n of m.nodes) {
+    const target = { kind: 'node' as const, id: n.id };
     if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) {
-      issues.push({ severity: 'error', message: `Coordenadas inválidas no nó ${n.id}`, target: { kind: 'node', id: n.id } });
+      issues.push({ severity: 'error', message: `Coordenadas inválidas no nó ${n.id}`, target });
+    }
+    const s = n.support;
+    if (!s) continue;
+    for (const [r, k, d, name] of DIRS) {
+      if (!s[r] && (s[k] ?? 0) < 0) {
+        issues.push({ severity: 'error', message: `A mola do nó ${n.id} na direção ${name} tem rigidez negativa`, target });
+      }
+      if (!s[r] && (s[d] ?? 0) !== 0) {
+        issues.push({ severity: 'warning', message: `O recalque do nó ${n.id} na direção ${name} é ignorado: essa direção não está restringida`, target });
+      }
     }
   }
 
@@ -36,13 +71,57 @@ export function validateModel(m: Model): Issue[] {
     const sec = sections.get(k.sectionId);
     if (!sec) {
       issues.push({ severity: 'error', message: `A barra ${k.id} não tem seção válida`, target });
-    } else if (!badSectionReported.has(sec.id)) {
-      const { A, I } = sectionArea(sec);
-      if (!(sec.E > 0) || !(A > 0) || !(I > 0)) {
-        badSectionReported.add(sec.id);
+    } else {
+      const key = `${sec.id}:${k.behavior}`;
+      const problem = sectionProblem(sec, k.behavior, k.id);
+      if (problem && !badSectionReported.has(key)) {
+        badSectionReported.add(key);
+        issues.push({ severity: 'error', message: problem, target });
+      }
+      if (k.thermal && k.thermal.tExt !== k.thermal.tInt) {
+        if (k.behavior === 'axial') {
+          issues.push({
+            severity: 'warning',
+            message: `Na barra somente axial ${k.id} só a parte uniforme da temperatura é considerada (o gradiente não tem efeito)`,
+            target,
+          });
+        } else {
+          const h = sectionHeight(sec);
+          if (!(h !== undefined && h > 0)) {
+            issues.push({
+              severity: 'error',
+              message: `A barra ${k.id} tem gradiente de temperatura: informe a altura h da seção "${sec.name}"`,
+              target,
+            });
+          }
+        }
+      }
+      if (!(sec.alpha >= 0) && !badSectionReported.has(`${sec.id}:alpha`)) {
+        badSectionReported.add(`${sec.id}:alpha`);
+        issues.push({ severity: 'error', message: `O coeficiente de dilatação da seção "${sec.name}" deve ser zero ou positivo`, target });
+      }
+    }
+    if (k.kind === 'arc' && k.behavior === 'axial') {
+      issues.push({
+        severity: 'error',
+        message: `O arco ${k.id} não pode ser somente axial: escolha Pórtico ou Somente flexão`,
+        target,
+      });
+    }
+    if (k.kind === 'bar' && k.behavior === 'axial') {
+      const L = Math.hypot(nj.x - ni.x, nj.y - ni.y) || 1;
+      const c = (nj.x - ni.x) / L;
+      const sn = (nj.y - ni.y) / L;
+      const transverse = k.loads.some((q) => {
+        if (q.qi === 0 && q.qj === 0) return false;
+        if (q.dir === 'localX') return false;
+        if (q.dir === 'localY') return true;
+        return (q.dir === 'globalY' ? Math.abs(c) : Math.abs(sn)) > 1e-9;
+      });
+      if (transverse) {
         issues.push({
           severity: 'error',
-          message: `A seção "${sec.name}" precisa de E, área e inércia positivos`,
+          message: `A barra ${k.id} é somente axial e não aceita carga transversal distribuída: aplique a carga nos nós ou mude o tipo da barra.`,
           target,
         });
       }
@@ -79,7 +158,7 @@ export function validateModel(m: Model): Issue[] {
   }
 
   if (m.members.length > 0) {
-    const supported = m.nodes.some((n) => n.support && (n.support.rx || n.support.ry || n.support.rz || n.support.kx || n.support.ky || n.support.kz));
+    const supported = m.nodes.some((n) => n.support && (n.support.rx || n.support.ry || n.support.rz || (n.support.kx ?? 0) > 0 || (n.support.ky ?? 0) > 0 || (n.support.kz ?? 0) > 0));
     if (!supported) issues.push({ severity: 'error', message: 'A estrutura não tem apoios' });
   }
 

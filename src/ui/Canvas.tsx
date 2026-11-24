@@ -178,17 +178,32 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
       const pts = polylines.get(k.id) ?? [];
       const sp = pts.map((p) => toScreen(v, p.x, p.y));
       const isSel = sel?.kind === 'member' && sel.id === k.id;
-      content.push(
-        <polyline
-          key={`m-${k.id}`}
-          points={sp.map((p) => `${p.x},${p.y}`).join(' ')}
-          fill="none"
-          stroke={isSel ? 'var(--selected)' : resultsView ? 'var(--member-dim)' : 'var(--member)'}
-          strokeWidth={isSel ? 3.5 : resultsView ? 1.6 : 2.4}
-          strokeLinejoin="round"
-          data-member={k.id}
-        />,
-      );
+      const color = isSel ? 'var(--selected)' : resultsView ? 'var(--member-dim)' : 'var(--member)';
+      const ptsAttr = sp.map((p) => `${p.x},${p.y}`).join(' ');
+      // pórtico: traço cheio; somente axial: traço fino; somente flexão: traço duplo
+      const width = k.behavior === 'axial' ? (isSel ? 2.4 : 1.3) : k.behavior === 'bending' ? (isSel ? 5.5 : resultsView ? 3.6 : 4.6) : isSel ? 3.5 : resultsView ? 1.6 : 2.4;
+      content.push(<polyline key={`m-${k.id}`} points={ptsAttr} fill="none" stroke={color} strokeWidth={width} strokeLinejoin="round" data-member={k.id} />);
+      if (k.behavior === 'bending') {
+        content.push(<polyline key={`mi-${k.id}`} points={ptsAttr} fill="none" stroke="var(--canvas)" strokeWidth={width - 3} strokeLinejoin="round" pointerEvents="none" />);
+      }
+      if (k.behavior !== 'frame' && !resultsView && sp.length >= 2) {
+        const i = Math.floor((sp.length - 1) / 2);
+        const a = sp[i];
+        const b = sp[i + 1];
+        const L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        // etiqueta do lado de cima (ou à esquerda) da barra
+        let nx = -(b.y - a.y) / L;
+        let ny = (b.x - a.x) / L;
+        if (ny > 0 || (Math.abs(ny) < 1e-9 && nx > 0)) {
+          nx = -nx;
+          ny = -ny;
+        }
+        content.push(
+          <Label key={`tag-${k.id}`} x={(a.x + b.x) / 2 + nx * 11} y={(a.y + b.y) / 2 + ny * 11 + 4} color="var(--muted)">
+            {k.behavior === 'axial' ? 'EA' : 'EI'}
+          </Label>,
+        );
+      }
     }
     if (resultsView && analysis.ok) {
       content.push(<ResultsLayer key="res" model={model} analysis={analysis} view={state.view} v={v} scale={state.scale} showValues={state.showValues} hoverPx={cursor ? toScreen(v, cursor.x, cursor.y) : null} onHover={setHover} height={size.h} />);
@@ -198,9 +213,10 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     for (const k of model.members) {
       const pts = polylines.get(k.id) ?? [];
       if (pts.length < 2) continue;
+      const axial = k.behavior === 'axial';
       const ends: [boolean, Pt, Pt][] = [
-        [k.hingeI, pts[0], pts[1]],
-        [k.hingeJ, pts[pts.length - 1], pts[pts.length - 2]],
+        [axial || k.hingeI, pts[0], pts[1]],
+        [axial || k.hingeJ, pts[pts.length - 1], pts[pts.length - 2]],
       ];
       ends.forEach(([on, a, b], i) => {
         if (!on) return;

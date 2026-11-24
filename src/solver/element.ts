@@ -34,6 +34,28 @@ export function localStiffness(EA: number, EI: number, L: number): Mat {
   ];
 }
 
+/** Rigidez da barra somente axial (tirante ou escora): só os termos de EA. */
+export function axialStiffness(EA: number, L: number): Mat {
+  const a = EA / L;
+  const k = zeros(6);
+  k[0][0] = a;
+  k[0][3] = -a;
+  k[3][0] = -a;
+  k[3][3] = a;
+  return k;
+}
+
+/**
+ * Cargas nodais equivalentes da temperatura: parte uniforme dT (°C) e curvatura térmica
+ * kappa = α(T_int − T_ext)/h (1/m). São as forças de engastamento perfeito com o sinal trocado:
+ * a barra presa e aquecida fica com N = −EAαΔT e M = −EIκ.
+ */
+export function thermalLoads(EA: number, EI: number, alpha: number, dT: number, kappa: number): number[] {
+  const n = EA * alpha * dT;
+  const m = EI * kappa;
+  return [-n, 0, -m, n, 0, m];
+}
+
 /** Cargas nodais equivalentes (sentido dos GDL positivos) para carga linear. */
 export function equivLoads(L: number, q: ElemLoad): number[] {
   const { px1, px2, wy1, wy2 } = q;

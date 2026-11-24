@@ -1,7 +1,7 @@
 import type { Id, Issue, Model } from '../model/types';
 import { validateModel } from '../model/validate';
 import { buildMesh, type Mesh } from './mesh';
-import { condense, equivLoads, localStiffness, toGlobal, vecToGlobal, vecToLocal, type Mat } from './element';
+import { axialStiffness, condense, equivLoads, localStiffness, thermalLoads, toGlobal, vecToGlobal, vecToLocal, type Mat } from './element';
 import { rcmOrder, Skyline } from './skyline';
 
 export interface Reaction {
@@ -111,11 +111,16 @@ export function analyze(model: Model): Analysis {
 
   // --- matrizes dos elementos
   const data: ElemData[] = mesh.elems.map((e) => {
-    const kLocal = localStiffness(e.EA, e.EI, e.L);
-    const feq = equivLoads(e.L, e.load);
+    const axial = e.behavior === 'axial';
+    // barra somente axial: só os termos de EA, sem condensação (não há rigidez à rotação)
+    const kLocal = axial ? axialStiffness(e.EA, e.L) : localStiffness(e.EA, e.EI, e.L);
+    const fl = equivLoads(e.L, e.load);
+    const ft = thermalLoads(e.EA, e.EI, e.alpha, e.dT, e.kappa);
+    const feq = fl.map((v, i) => v + ft[i]);
+    if (axial) [1, 2, 4, 5].forEach((i) => (feq[i] = 0));
     const released: number[] = [];
-    if (e.relA) released.push(2);
-    if (e.relB) released.push(5);
+    if (!axial && e.relA) released.push(2);
+    if (!axial && e.relB) released.push(5);
     const cond = condense(kLocal, feq, released);
     return {
       dofs: [3 * e.a, 3 * e.a + 1, 3 * e.a + 2, 3 * e.b, 3 * e.b + 1, 3 * e.b + 2],

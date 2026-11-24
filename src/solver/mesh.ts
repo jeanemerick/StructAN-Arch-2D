@@ -1,5 +1,5 @@
-import type { DistLoad, Id, Model } from '../model/types';
-import { sectionProps } from '../model/ops';
+import type { Behavior, DistLoad, Id, Model } from '../model/types';
+import { sectionHeight, sectionProps } from '../model/ops';
 import { compileArcCurve, CURVE_SAMPLES } from '../model/curve';
 import type { ElemLoad } from './element';
 
@@ -15,13 +15,28 @@ export interface MeshElem {
   L: number;
   c: number;
   s: number;
+  /** Na barra somente flexão, EA é a rigidez de penalidade (ver INEXTENSIBLE_PENALTY). */
   EA: number;
   EI: number;
   relA: boolean;
   relB: boolean;
   load: ElemLoad;
   memberId: Id;
+  behavior: Behavior;
+  alpha: number;
+  /** Parte uniforme da variação de temperatura (°C). */
+  dT: number;
+  /** Curvatura térmica α(T_int − T_ext)/h (1/m). */
+  kappa: number;
 }
+
+/**
+ * Barra somente flexão (inextensível): rigidez axial de penalidade EA = P·12EI/L², isto é,
+ * P vezes a rigidez transversal do próprio elemento. Com P = 10⁷ a deformação axial fica
+ * 10⁷ vezes menor que a de flexão, e o esforço normal, que sai de EA·ΔL/L, mantém cerca de
+ * 8 algarismos (a fatoração LDLᵀ é estável para a direção rígida).
+ */
+export const INEXTENSIBLE_PENALTY = 1e7;
 
 export interface Mesh {
   nodes: MeshNode[];
@@ -116,17 +131,31 @@ export function buildMesh(model: Model): Mesh {
     const L = Math.hypot(dx, dy);
     const c = dx / L;
     const s = dy / L;
-    elems.push({ a, b, L, c, s, load: load(c, s), ...rest });
+    const EA = rest.behavior === 'bending' ? (INEXTENSIBLE_PENALTY * 12 * rest.EI) / (L * L) : rest.EA;
+    elems.push({ a, b, L, c, s, load: load(c, s), ...rest, EA });
     return elems.length - 1;
   };
 
   for (const mem of model.members) {
-    const { EA, EI } = sectionProps(sections.get(mem.sectionId)!);
+    const sec = sections.get(mem.sectionId)!;
+    const { EA, EI } = sectionProps(sec);
+    const behavior = mem.behavior;
+    const axial = behavior === 'axial';
+    const th = mem.thermal;
+    const h = sectionHeight(sec);
+    const thermal = {
+      alpha: sec.alpha,
+      dT: th ? (th.tExt + th.tInt) / 2 : 0,
+      kappa: th && !axial && h && h > 0 ? (sec.alpha * (th.tInt - th.tExt)) / h : 0,
+    };
     const a = modelNode(mem.ni);
     const b = modelNode(mem.nj);
     if (mem.kind === 'bar') {
-      const e = pushElem(a, b, { EA, EI, relA: mem.hingeI, relB: mem.hingeJ, memberId: mem.id }, (c, s) =>
-        localLoad(mem.loads, c, s, (l) => l.qi, (l) => l.qj),
+      const e = pushElem(
+        a,
+        b,
+        { EA, EI: axial ? 0 : EI, relA: axial || mem.hingeI, relB: axial || mem.hingeJ, memberId: mem.id, behavior, ...thermal },
+        (c, s) => localLoad(mem.loads, c, s, (l) => l.qi, (l) => l.qj),
       );
       memberElems.set(mem.id, [e]);
       continue;
@@ -150,7 +179,7 @@ export function buildMesh(model: Model): Mesh {
       const e = pushElem(
         n1,
         n2,
-        { EA, EI, relA: k === 0 && mem.hingeI, relB: k === mem.nSeg - 1 && mem.hingeJ, memberId: mem.id },
+        { EA, EI, relA: k === 0 && mem.hingeI, relB: k === mem.nSeg - 1 && mem.hingeJ, memberId: mem.id, behavior, ...thermal },
         (c, s) =>
           localLoad(
             mem.loads,

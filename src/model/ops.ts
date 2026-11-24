@@ -4,16 +4,20 @@ import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
 /** Distância máxima para considerar dois nós o mesmo ponto (m). */
 export const MERGE_TOL = 1e-6;
 
+/** Coeficiente de dilatação térmica padrão (1/°C). */
+export const ALPHA_DEFAULT = 1e-5;
+
 export function emptyModel(): Model {
   return {
-    version: 1,
+    version: 2,
     nodes: [],
     members: [],
-    sections: [{ id: 's1', name: 'Seção 1', E: 25e6, shape: { kind: 'rect', b: 0.2, h: 0.4 } }],
+    sections: [{ id: 's1', name: 'Seção 1', E: 25e6, shape: { kind: 'rect', b: 0.2, h: 0.4 }, alpha: ALPHA_DEFAULT }],
   };
 }
 
-export function sectionArea(s: Section): { A: number; I: number } {
+/** Área e inércia geométricas; null na seção de rigidez direta. */
+export function sectionArea(s: Section): { A: number; I: number } | null {
   const sh = s.shape;
   switch (sh.kind) {
     case 'rect':
@@ -22,12 +26,23 @@ export function sectionArea(s: Section): { A: number; I: number } {
       return { A: (Math.PI * sh.d ** 2) / 4, I: (Math.PI * sh.d ** 4) / 64 };
     case 'generic':
       return { A: sh.A, I: sh.I };
+    case 'direct':
+      return null;
   }
 }
 
 export function sectionProps(s: Section): { EA: number; EI: number } {
-  const { A, I } = sectionArea(s);
+  if (s.shape.kind === 'direct') return { EA: s.shape.EA, EI: s.shape.EI };
+  const { A, I } = sectionArea(s)!;
   return { EA: s.E * A, EI: s.E * I };
+}
+
+/** Altura da seção (m) para o gradiente térmico; undefined quando não informada. */
+export function sectionHeight(s: Section): number | undefined {
+  const sh = s.shape;
+  if (sh.kind === 'rect') return sh.h;
+  if (sh.kind === 'circ') return sh.d;
+  return sh.h;
 }
 
 function nextId(prefix: string, ids: Id[]): Id {
@@ -50,6 +65,7 @@ export function addSection(m: Model, base?: Partial<Omit<Section, 'id'>>): { mod
     name: base?.name ?? `Seção ${m.sections.length + 1}`,
     E: base?.E ?? 25e6,
     shape: base?.shape ?? { kind: 'rect', b: 0.2, h: 0.4 },
+    alpha: base?.alpha ?? ALPHA_DEFAULT,
   };
   return { model: { ...m, sections: [...m.sections, s] }, id };
 }
@@ -158,16 +174,26 @@ export function addBar(m: Model, ni: Id, nj: Id, sectionId?: Id): { model: Model
       hingeI: false,
       hingeJ: false,
       loads: [],
+      behavior: 'frame',
     };
     out = { ...out, members: [...out.members, bar] };
   }
   return { model: out, id: firstId };
 }
 
-export type MemberPatch = Partial<Pick<MemberBase, 'sectionId' | 'hingeI' | 'hingeJ' | 'loads'>>;
+export type MemberPatch = Partial<Pick<MemberBase, 'sectionId' | 'hingeI' | 'hingeJ' | 'loads' | 'behavior' | 'thermal'>>;
 
+/** Altera a barra; `thermal: undefined` no patch remove a temperatura. */
 export function updateMember(m: Model, id: Id, patch: MemberPatch): Model {
-  return { ...m, members: m.members.map((k) => (k.id === id ? ({ ...k, ...patch } as Member) : k)) };
+  return {
+    ...m,
+    members: m.members.map((k) => {
+      if (k.id !== id) return k;
+      const next = { ...k, ...patch } as Member;
+      if ('thermal' in patch && !patch.thermal) delete next.thermal;
+      return next;
+    }),
+  };
 }
 
 export function deleteMember(m: Model, id: Id): Model {
@@ -202,6 +228,7 @@ export function addArc(
     hingeI: false,
     hingeJ: false,
     loads: [],
+    behavior: 'frame',
     expr: a.expr,
     nSeg: a.nSeg,
   };

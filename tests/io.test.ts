@@ -16,10 +16,10 @@ describe('arquivo JSON', () => {
       if (back.ok) expect(back.model).toEqual(m);
     }
   });
-  it('rejeita texto que não é JSON, versão diferente de 1 e nó inexistente', () => {
+  it('rejeita texto que não é JSON, versão desconhecida e nó inexistente', () => {
     expect(parseModel('isto não é json').ok).toBe(false);
     const m = examples[0].build();
-    expect(parseModel(JSON.stringify({ ...m, version: 2 })).ok).toBe(false);
+    expect(parseModel(JSON.stringify({ ...m, version: 3 })).ok).toBe(false);
     const broken = { ...m, members: m.members.map((k, i) => (i === 0 ? { ...k, nj: 'n999' } : k)) };
     const r = parseModel(JSON.stringify(broken));
     expect(r.ok).toBe(false);
@@ -62,13 +62,15 @@ describe('exemplos', () => {
       expectEquilibrium(m, r);
     });
   }
-  it('lista os cinco exemplos previstos', () => {
+  it('lista os sete exemplos previstos', () => {
     expect(examples.map((e) => e.slug)).toEqual([
       'viga-biapoiada',
       'portico-plano',
       'arco-parabolico-biarticulado',
       'arco-triarticulado',
       'arco-atirantado',
+      'arco-triarticulado-faixa',
+      'portico-duas-aguas-tirantes',
     ]);
   });
   it('arco atirantado: esforço no tirante ≈ qL²/(8f) (±2%)', () => {

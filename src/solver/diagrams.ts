@@ -38,16 +38,26 @@ function barStations(res: AnalysisOk, k: number, n: number): Station[] {
   const L = e.L;
   const dp = (px2 - px1) / L;
   const dw = (wy2 - wy1) / L;
+  const axial = e.behavior === 'axial';
+  const v2 = res.endDisp[k][4];
+  const eps0 = e.alpha * e.dT;
   const out: Station[] = [];
   for (let i = 0; i <= n; i++) {
     const s = (L * i) / n;
     const s2 = s * s;
     const s3 = s2 * s;
     const N = -f1x - (px1 * s + (dp * s2) / 2);
+    // u′ = N/EA + αΔT;  v″ = M/EI + κ (κ = curvatura térmica)
+    const u = u1 + (-f1x * s - (px1 * s2) / 2 - (dp * s3) / 6) / e.EA + eps0 * s;
+    if (axial) {
+      // barra somente axial: sem cortante nem momento; transversalmente, desloca-se como corpo rígido
+      const v = v1 + ((v2 - v1) * s) / L;
+      out.push({ s, x: A.x + e.c * s, y: A.y + e.s * s, tx: e.c, ty: e.s, N, Q: 0, M: 0, dx: u * e.c - v * e.s, dy: u * e.s + v * e.c });
+      continue;
+    }
     const Q = f1y + wy1 * s + (dw * s2) / 2;
     const M = -m1 + f1y * s + (wy1 * s2) / 2 + (dw * s3) / 6;
-    const u = u1 + (-f1x * s - (px1 * s2) / 2 - (dp * s3) / 6) / e.EA;
-    const v = v1 + th1 * s + ((-m1 * s2) / 2 + (f1y * s3) / 6 + (wy1 * s2 * s2) / 24 + (dw * s3 * s2) / 120) / e.EI;
+    const v = v1 + th1 * s + ((-m1 * s2) / 2 + (f1y * s3) / 6 + (wy1 * s2 * s2) / 24 + (dw * s3 * s2) / 120) / e.EI + (e.kappa * s2) / 2;
     out.push({
       s,
       x: A.x + e.c * s,

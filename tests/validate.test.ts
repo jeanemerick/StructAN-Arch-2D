@@ -23,7 +23,7 @@ function rawArc(expr: string, xi: number, yi: number, xj: number, yj: number): {
   m = {
     ...m,
     members: [
-      { kind: 'arc', id: 'm1', ni: a.id, nj: b.id, sectionId: m.sections[0].id, hingeI: false, hingeJ: false, loads: [], expr, nSeg: 40 },
+      { kind: 'arc', id: 'm1', ni: a.id, nj: b.id, sectionId: m.sections[0].id, hingeI: false, hingeJ: false, loads: [], behavior: 'frame', expr, nSeg: 40 },
     ],
   };
   return { m, arc: 'm1' };

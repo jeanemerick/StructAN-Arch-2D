@@ -32,9 +32,10 @@ function okArc(m: Model, expr: string, xi: number, xj: number, nSeg = 40) {
 }
 
 describe('modelo vazio e seções', () => {
-  it('emptyModel tem versão 1 e uma seção padrão de 25 GPa, 20×40 cm', () => {
+  it('emptyModel tem versão 2 e uma seção padrão de 25 GPa, 20×40 cm, α = 1,0×10⁻⁵', () => {
     const m = emptyModel();
-    expect(m.version).toBe(1);
+    expect(m.version).toBe(2);
+    expect(m.sections[0].alpha).toBe(1e-5);
     expect(m.nodes).toEqual([]);
     expect(m.members).toEqual([]);
     expect(m.sections).toHaveLength(1);
@@ -43,14 +44,14 @@ describe('modelo vazio e seções', () => {
   });
   it('sectionProps calcula EA e EI de retângulo, círculo e seção genérica', () => {
     const E = 25e6;
-    expect(sectionProps({ id: 's', name: 'r', E, shape: { kind: 'rect', b: 0.2, h: 0.5 } })).toEqual({
+    expect(sectionProps({ id: 's', name: 'r', E, alpha: 1e-5, shape: { kind: 'rect', b: 0.2, h: 0.5 } })).toEqual({
       EA: E * 0.1,
       EI: E * (0.2 * 0.5 ** 3) / 12,
     });
-    const c = sectionProps({ id: 's', name: 'c', E, shape: { kind: 'circ', d: 0.4 } });
+    const c = sectionProps({ id: 's', name: 'c', E, alpha: 1e-5, shape: { kind: 'circ', d: 0.4 } });
     expect(c.EA).toBeCloseTo((E * Math.PI * 0.4 ** 2) / 4, 6);
     expect(c.EI).toBeCloseTo((E * Math.PI * 0.4 ** 4) / 64, 6);
-    expect(sectionProps({ id: 's', name: 'g', E, shape: { kind: 'generic', A: 10, I: 0.001 } })).toEqual({
+    expect(sectionProps({ id: 's', name: 'g', E, alpha: 1e-5, shape: { kind: 'generic', A: 10, I: 0.001 } })).toEqual({
       EA: E * 10,
       EI: E * 0.001,
     });
