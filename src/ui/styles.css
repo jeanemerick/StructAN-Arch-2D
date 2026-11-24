@@ -721,6 +721,49 @@ table.res tr.clickable:hover {
 }
 .status-warn {
   color: var(--warn);
+  cursor: pointer;
+}
+.issues-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.btn.small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.issues-list {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: min(560px, calc(100vw - 32px));
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--shadow);
+  padding: 4px;
+}
+.issue {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.issue:hover {
+  background: var(--accent-soft);
+}
+.issue.error {
+  color: var(--danger);
+}
+.issue.warn {
+  color: var(--warn);
 }
 
 /* ---------- telas estreitas: painel sob o desenho ---------- */

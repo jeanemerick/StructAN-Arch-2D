@@ -11,7 +11,6 @@ import { StatusBar } from './StatusBar';
 import { NodePanel } from './panels/NodePanel';
 import { MemberPanel } from './panels/MemberPanel';
 import { SectionsPanel } from './panels/SectionsPanel';
-import { ResultsTable } from './panels/ResultsTable';
 import { NewArcForm, defaultDraft, draftPreview, pickPoint, type ArcDraft } from './panels/ArcForm';
 import { type Pt } from './geometry';
 import { pngBlob, stationsCsv } from './export';
@@ -46,7 +45,7 @@ function safeAnalyze(m: Model): Analysis {
   }
 }
 
-type SideTab = 'props' | 'sections' | 'results';
+type SideTab = 'props' | 'sections';
 
 /** Pedido de confirmação mostrado na própria página (sem confirm do navegador). */
 interface Confirm {
@@ -466,9 +465,6 @@ export default function App() {
           <button className={tab === 'sections' ? 'active' : ''} onClick={() => setTab('sections')} data-testid="side-sections">
             Seções
           </button>
-          <button className={tab === 'results' ? 'active' : ''} onClick={() => setTab('results')} data-testid="side-results">
-            Resultados
-          </button>
         </div>
         <div className="side-body">
           {confirm && (
@@ -502,7 +498,6 @@ export default function App() {
           )}
           {tab === 'props' && props}
           {tab === 'sections' && <SectionsPanel model={model} dispatch={dispatch} />}
-          {tab === 'results' && <ResultsTable model={model} analysis={analysis} dispatch={dispatch} />}
         </div>
       </aside>
       <StatusBar
@@ -512,6 +507,10 @@ export default function App() {
         setScale={(scale) => dispatch({ type: 'set', patch: { scale } })}
         showValues={state.showValues}
         setShowValues={(showValues) => dispatch({ type: 'set', patch: { showValues } })}
+        showReactions={state.showReactions}
+        setShowReactions={(showReactions) => dispatch({ type: 'set', patch: { showReactions } })}
+        loadsOnAxis={state.loadsOnAxis}
+        setLoadsOnAxis={(loadsOnAxis) => dispatch({ type: 'set', patch: { loadsOnAxis } })}
         cursor={cursor}
         analysis={analysis}
         onIssue={onIssue}

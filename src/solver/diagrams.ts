@@ -42,8 +42,12 @@ function barStations(res: AnalysisOk, k: number, n: number): Station[] {
   const v2 = res.endDisp[k][4];
   const eps0 = e.alpha * e.dT;
   const out: Station[] = [];
-  for (let i = 0; i <= n; i++) {
-    const s = (L * i) / n;
+  // estações uniformes mais os pontos onde N, Q ou M têm extremo dentro da barra
+  const ss = new Set<number>();
+  for (let i = 0; i <= n; i++) ss.add((L * i) / n);
+  for (const c of criticalPoints(res, k)) ss.add(c);
+  const list = [...ss].sort((a, b) => a - b).filter((v, i, arr) => i === 0 || v - arr[i - 1] > 1e-12 * L);
+  for (const s of list) {
     const s2 = s * s;
     const s3 = s2 * s;
     const N = -f1x - (px1 * s + (dp * s2) / 2);
@@ -71,6 +75,41 @@ function barStations(res: AnalysisOk, k: number, n: number): Station[] {
       dy: u * e.s + v * e.c,
     });
   }
+  return out;
+}
+
+/** Raízes reais de a·s² + b·s + c em (0, L). */
+function rootsIn(a: number, b: number, c: number, L: number): number[] {
+  const tol = 1e-12 * Math.max(1, Math.abs(b), Math.abs(c));
+  const out: number[] = [];
+  if (Math.abs(a) <= tol) {
+    if (Math.abs(b) > tol) out.push(-c / b);
+  } else {
+    const d = b * b - 4 * a * c;
+    if (d >= 0) {
+      const r = Math.sqrt(d);
+      out.push((-b - r) / (2 * a), (-b + r) / (2 * a));
+    }
+  }
+  return out.filter((s) => s > 1e-9 * L && s < L * (1 - 1e-9));
+}
+
+/**
+ * Posições (ao longo do elemento k) onde os esforços têm extremo no interior:
+ * N onde a carga axial zera; Q onde a carga transversal zera; M onde Q zera.
+ */
+function criticalPoints(res: AnalysisOk, k: number): number[] {
+  const e = res.mesh.elems[k];
+  const [, f1y] = res.endForces[k];
+  const { px1, px2, wy1, wy2 } = e.load;
+  const L = e.L;
+  const dp = (px2 - px1) / L;
+  const dw = (wy2 - wy1) / L;
+  const out = rootsIn(0, dp, px1, L);
+  if (e.behavior === 'axial') return out;
+  out.push(...rootsIn(0, dw, wy1, L));
+  // Q(s) = f1y + wy1·s + dw·s²/2 = 0
+  out.push(...rootsIn(dw / 2, wy1, f1y, L));
   return out;
 }
 
@@ -136,4 +175,37 @@ export function extremes(st: Station[]): {
     r.disp = Math.max(r.disp, Math.hypot(p.dx, p.dy));
   }
   return r;
+}
+
+export interface Extreme {
+  value: number;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+}
+
+export type MemberExtremes = Record<'N' | 'Q' | 'M', { max: Extreme; min: Extreme }>;
+
+/**
+ * Maior e menor valor de N, Q e M no membro. Na barra são exatos: as estações já incluem os
+ * pontos onde a derivada zera (M onde Q = 0, por exemplo). No arco, valem as estações dos nós
+ * da poligonal, onde N e Q são projetados na tangente real; o momento extra dentro de cada
+ * trecho reto é efeito da discretização e some quando o número de segmentos cresce.
+ */
+export function memberExtremes(model: Model, res: AnalysisOk, memberId: Id): MemberExtremes {
+  const cand = memberStations(model, res, memberId, 40);
+  const pick = (key: 'N' | 'Q' | 'M') => {
+    let max: Extreme | null = null;
+    let min: Extreme | null = null;
+    for (const p of cand) {
+      const v = p[key];
+      if (!Number.isFinite(v)) continue;
+      if (!max || v > max.value) max = { value: v, x: p.x, y: p.y, tx: p.tx, ty: p.ty };
+      if (!min || v < min.value) min = { value: v, x: p.x, y: p.y, tx: p.tx, ty: p.ty };
+    }
+    const zero = { value: 0, x: 0, y: 0, tx: 1, ty: 0 };
+    return { max: max ?? zero, min: min ?? zero };
+  };
+  return { N: pick('N'), Q: pick('Q'), M: pick('M') };
 }

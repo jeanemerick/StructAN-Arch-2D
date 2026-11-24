@@ -70,6 +70,9 @@ export function Label({
   color = 'var(--ink)',
   anchor = 'middle',
   weight,
+  size,
+  halo,
+  testid,
 }: {
   x: number;
   y: number;
@@ -77,9 +80,27 @@ export function Label({
   color?: string;
   anchor?: 'start' | 'middle' | 'end';
   weight?: number;
+  size?: number;
+  /** Contorno da cor do fundo, para o texto ficar legível sobre o diagrama. */
+  halo?: boolean;
+  testid?: string;
 }) {
   return (
-    <text x={x} y={y} className="svg-label" fill={color} textAnchor={anchor} dominantBaseline="middle" fontWeight={weight}>
+    <text
+      x={x}
+      y={y}
+      className="svg-label"
+      fill={color}
+      textAnchor={anchor}
+      dominantBaseline="middle"
+      fontWeight={weight}
+      fontSize={size}
+      stroke={halo ? 'var(--canvas)' : undefined}
+      strokeWidth={halo ? 3 : undefined}
+      paintOrder={halo ? 'stroke' : undefined}
+      strokeLinejoin={halo ? 'round' : undefined}
+      data-testid={testid}
+    >
       {children}
     </text>
   );

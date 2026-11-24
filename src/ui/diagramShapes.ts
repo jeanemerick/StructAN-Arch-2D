@@ -17,6 +17,8 @@ export interface DPoint {
 /** Sequência de barras e arcos em que o diagrama é contínuo (mesma direção do eixo e mesmo valor nas emendas). */
 export interface Chain {
   members: Id[];
+  /** Peça percorrida ao contrário do seu sentido (mesma ordem de members). */
+  reversed: boolean[];
   pts: DPoint[];
 }
 
@@ -33,7 +35,7 @@ interface End {
  * da barra; N e Q do lado +y local, com o sentido da cadeia (barra percorrida ao contrário
  * desenha do lado oposto, para o diagrama não trocar de lado numa emenda alinhada).
  */
-function drawDir(effort: Effort, p: Station, reversed: boolean): [number, number] {
+export function drawDir(effort: Effort, p: { tx: number; ty: number }, reversed: boolean): [number, number] {
   const nx = -p.ty;
   const ny = p.tx;
   if (effort === 'M') return [-nx, -ny];
@@ -140,7 +142,7 @@ export function buildChains(model: Model, stations: Map<Id, Station[]>, effort: 
         pts.push({ x: p.x, y: p.y, v: p[effort], dx, dy, memberId: id });
       });
     }
-    chains.push({ members: seq.map((s) => s.id), pts });
+    chains.push({ members: seq.map((s) => s.id), reversed: seq.map((s) => s.reversed), pts });
   }
   return chains;
 }

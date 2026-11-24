@@ -8,6 +8,7 @@ import { fitView, hitTest, itemsInWindow, memberPolyline, modelBounds, toScreen,
 import { Arrow, HingeGlyph, Label, MomentArrow, SupportGlyph } from './glyphs';
 import { formatValue } from './format';
 import { ResultsLayer, type HoverInfo } from './ResultsLayer';
+import { computeLoadBands } from './loadBands';
 
 interface Props {
   state: UiState;
@@ -237,9 +238,9 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
       }
     }
     if (resultsView && analysis.ok) {
-      content.push(<ResultsLayer key="res" model={model} analysis={analysis} view={state.view} v={v} scale={state.scale} showValues={state.showValues} hoverPx={cursor ? toScreen(v, cursor.x, cursor.y) : null} onHover={setHover} height={size.h} />);
+      content.push(<ResultsLayer key="res" model={model} analysis={analysis} view={state.view} v={v} scale={state.scale} showValues={state.showValues} showReactions={state.showReactions} hoverPx={cursor ? toScreen(v, cursor.x, cursor.y) : null} onHover={setHover} height={size.h} />);
     }
-    if (!resultsView) content.push(<LoadsLayer key="loads" model={model} v={v} polylines={polylines} />);
+    if (!resultsView) content.push(<LoadsLayer key="loads" model={model} v={v} polylines={polylines} onAxis={state.loadsOnAxis} />);
     // rótulas
     for (const k of model.members) {
       const pts = polylines.get(k.id) ?? [];
@@ -412,10 +413,39 @@ function GridLayer({ v, w, h, grid }: { v: ViewT; w: number; h: number; grid: nu
 
 const unitLoad = (q: DistLoad) => (q.dir === 'localX' || q.dir === 'localY' ? 'kN/m (local)' : q.ref === 'projection' ? 'kN/m (proj.)' : 'kN/m');
 
-/** Cargas distribuídas e nodais, desenhadas em pixels. */
-function LoadsLayer({ model, v, polylines }: { model: Model; v: ViewT; polylines: Map<Id, Pt[]> }) {
+/**
+ * Cargas distribuídas e nodais, desenhadas em pixels. Por padrão, as cargas em direção global
+ * vão em faixas retas (loadBands.ts); `onAxis` desenha todas sobre o eixo do elemento (desenho antigo).
+ */
+function LoadsLayer({ model, v, polylines, onAxis }: { model: Model; v: ViewT; polylines: Map<Id, Pt[]>; onAxis: boolean }) {
   const out: ReactNode[] = [];
   const color = 'var(--load)';
+  let axisSet: Set<string> | null = null;
+  if (!onAxis) {
+    const screen = new Map([...polylines].map(([id, pts]) => [id, pts.map((p) => toScreen(v, p.x, p.y))]));
+    const { bands, onAxis: rest } = computeLoadBands(model, screen, polylines);
+    axisSet = new Set(rest.map((r) => `${r.memberId}:${r.loadIndex}`));
+    bands.forEach((b, bi) => {
+      out.push(
+        <polygon
+          key={`band-${bi}`}
+          points={b.outline.map((p) => `${p.x},${p.y}`).join(' ')}
+          fill="var(--load)"
+          fillOpacity={0.07}
+          stroke={color}
+          strokeWidth={1.1}
+          strokeLinejoin="round"
+          data-testid="load-band"
+        />,
+      );
+      b.arrows.forEach((a, ai) => out.push(<Arrow key={`ba-${bi}-${ai}`} x1={a.tail.x} y1={a.tail.y} x2={a.head.x} y2={a.head.y} color={color} width={1.1} head={5} />));
+      out.push(
+        <Label key={`bl-${bi}`} x={b.label.x} y={b.label.y} color={color} anchor={b.label.anchor} halo>
+          {b.label.text}
+        </Label>,
+      );
+    });
+  }
   for (const k of model.members) {
     const pts = polylines.get(k.id);
     if (!pts || pts.length < 2 || k.loads.length === 0) continue;
@@ -430,6 +460,7 @@ function LoadsLayer({ model, v, polylines }: { model: Model; v: ViewT; polylines
     k.loads.forEach((q, li) => {
       const qmax = Math.max(Math.abs(q.qi), Math.abs(q.qj));
       if (qmax === 0) return;
+      if (axisSet && !axisSet.has(`${k.id}:${li}`)) return;
       const nArrows = Math.max(3, Math.min(40, Math.round(total / 28)));
       const tails: Pt[] = [];
       const offset = li * 34;
