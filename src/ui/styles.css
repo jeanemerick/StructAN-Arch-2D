@@ -766,6 +766,18 @@ table.res tr.clickable:hover {
   color: var(--warn);
 }
 
+/* ---------- barreira de erro ---------- */
+.crash {
+  max-width: 560px;
+  margin: 10vh auto;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--danger);
+  border-radius: 10px;
+  line-height: 1.5;
+}
+
 /* ---------- ajuda ---------- */
 .help-overlay {
   grid-row: 2 / -1;
