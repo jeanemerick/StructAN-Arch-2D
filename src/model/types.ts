@@ -105,11 +105,26 @@ export interface Bar extends MemberBase {
   kind: 'bar';
 }
 
+export type ArcShape = 'parabola' | 'circular' | 'catenary';
+
+/**
+ * Parâmetros geradores do arco criado entre dois nós: forma, altura (m, medida da corda no meio
+ * do vão) e os nós das nascenças a e b. Quando a ou b mudam de posição, a equação é refeita.
+ * Os trechos de um arco dividido guardam os mesmos parâmetros (as mesmas nascenças).
+ */
+export interface ArcGen {
+  shape: ArcShape;
+  rise: number;
+  a: Id;
+  b: Id;
+}
+
 /** Arco definido por y = f(x) entre as abscissas dos nós ni (esquerda) e nj (direita). */
 export interface Arc extends MemberBase {
   kind: 'arc';
   expr: string;
   nSeg: number;
+  gen?: ArcGen;
 }
 
 export type Member = Bar | Arc;

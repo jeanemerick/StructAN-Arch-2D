@@ -3,8 +3,8 @@ import type { DistLoad, Id, Model } from '../model/types';
 import { addBar } from '../model/ops';
 import { resolveClickNode, snapPoint } from './picking';
 import type { Analysis } from '../solver/analyze';
-import type { Action, UiState } from './state';
-import { fitView, hitTest, memberPolyline, modelBounds, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
+import { isSelected, type Action, type UiState } from './state';
+import { fitView, hitTest, itemsInWindow, memberPolyline, modelBounds, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
 import { Arrow, HingeGlyph, Label, MomentArrow, SupportGlyph } from './glyphs';
 import { formatValue } from './format';
 import { ResultsLayer, type HoverInfo } from './ResultsLayer';
@@ -17,11 +17,17 @@ interface Props {
   draftArc: Pt[] | null;
   svgRef: RefObject<SVGSVGElement>;
   onCursor(p: Pt | null): void;
+  /** Quando definido, o clique entrega o ponto (com snap) em vez de criar ou selecionar. */
+  pick?: (p: Pt) => void;
+  /** Marcadores de pré-visualização (nó por coordenadas, nascenças do arco). */
+  marks?: Pt[];
+  /** Dica mostrada no alto do desenho (substitui a padrão da ferramenta). */
+  hintText?: string;
 }
 
 const HIT_PX = 8;
 
-export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, onCursor }: Props) {
+export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, onCursor, pick, marks, hintText }: Props) {
   const { model, tool, selection, barStart } = state;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -29,7 +35,10 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
   const [cursor, setCursor] = useState<Pt | null>(null);
   const [panning, setPanning] = useState(false);
   const [hover, setHover] = useState<HoverInfo | null>(null);
-  const pan = useRef<{ sx: number; sy: number; v: ViewT; moved: boolean; button: number } | null>(null);
+  /** Arraste em curso: mover a vista, janela de seleção ou clique (ainda sem movimento). */
+  const pan = useRef<{ sx: number; sy: number; v: ViewT; moved: boolean; button: number; mode: 'pan' | 'window' | 'click'; touch: boolean } | null>(null);
+  const [win, setWin] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const suppressMenu = useRef(false);
   const spaceDown = useRef(false);
 
   const polylines = useMemo(() => {
@@ -95,11 +104,16 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
   const pickOpts = (v: ViewT) => ({ tol: HIT_PX / v.scale, snap: state.snap, grid: state.grid, polylines });
   const snapAt = (raw: Pt, v: ViewT): Pt => snapPoint(model, raw, pickOpts(v));
 
-  const handleClick = (p: Pt, v: ViewT) => {
+  const handleClick = (p: Pt, v: ViewT, shift: boolean) => {
     const raw = toWorld(v, p.x, p.y);
+    if (pick) {
+      pick(snapAt(raw, v));
+      return;
+    }
     if (tool === 'select' || tool === 'arc') {
       const h = hitTest(model, raw.x, raw.y, HIT_PX / v.scale, polylines);
-      dispatch({ type: 'select', selection: h ? { kind: h.kind, id: h.id } : null });
+      if (h) dispatch({ type: 'select', selection: { kind: h.kind, id: h.id }, how: shift ? 'toggle' : 'replace' });
+      else if (!shift) dispatch({ type: 'select', selection: null });
       return;
     }
     const r = resolveClickNode(model, raw, pickOpts(v));
@@ -124,31 +138,35 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
   const onPointerDown = (e: React.PointerEvent) => {
     if (!view) return;
     const p = local(e);
-    const wantsPan = e.button === 1 || (e.button === 0 && (spaceDown.current || tool === 'select' || tool === 'arc'));
-    if (e.button === 2) return;
+    const touch = e.pointerType === 'touch';
+    // botão do meio, botão direito ou Espaço: move a vista; no Selecionar, o esquerdo faz a janela;
+    // no toque, arrastar move a vista e tocar é clique
+    const mode: 'pan' | 'window' | 'click' =
+      e.button === 1 || e.button === 2 || (e.button === 0 && spaceDown.current) || touch ? 'pan' : tool === 'select' && !pick ? 'window' : 'click';
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    pan.current = { sx: p.x, sy: p.y, v: view, moved: false, button: wantsPan ? e.button : -1 };
+    pan.current = { sx: p.x, sy: p.y, v: view, moved: false, button: e.button, mode, touch };
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!view) return;
     const p = local(e);
     const pc = pan.current;
-    if (pc && pc.button >= 0) {
+    if (pc && pc.mode !== 'click') {
       const dx = p.x - pc.sx;
       const dy = p.y - pc.sy;
       if (!pc.moved && Math.hypot(dx, dy) > 3) {
         pc.moved = true;
-        setPanning(true);
+        if (pc.mode === 'pan') setPanning(true);
       }
-      if (pc.moved) {
+      if (pc.moved && pc.mode === 'pan') {
         setView({ ...pc.v, ox: pc.v.ox + dx, oy: pc.v.oy + dy });
         return;
       }
+      if (pc.moved && pc.mode === 'window') setWin({ x0: pc.sx, y0: pc.sy, x1: p.x, y1: p.y });
     }
     const raw = toWorld(view, p.x, p.y);
     const snapped = snapAt(raw, view);
-    setCursor(tool === 'node' || tool === 'bar' ? snapped : raw);
+    setCursor(tool === 'node' || tool === 'bar' || pick ? snapped : raw);
     onCursor(snapped);
   };
 
@@ -156,8 +174,22 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     const pc = pan.current;
     pan.current = null;
     setPanning(false);
-    if (!view || !pc || pc.moved) return;
-    if (e.button === 0 && !spaceDown.current) handleClick(local(e), view);
+    if (!view || !pc) return;
+    if (pc.moved) {
+      if (pc.mode === 'pan' && pc.button === 2) suppressMenu.current = true;
+      if (pc.mode === 'window' && win) {
+        // da esquerda para a direita: só o que estiver inteiro dentro; da direita para a esquerda: o que a janela tocar
+        const a = toWorld(view, win.x0, win.y0);
+        const b = toWorld(view, win.x1, win.y1);
+        const rect = { minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x), minY: Math.min(a.y, b.y), maxY: Math.max(a.y, b.y) };
+        const found = itemsInWindow(model, rect, win.x1 >= win.x0 ? 'inside' : 'crossing', polylines);
+        dispatch({ type: 'select', selection: found, how: e.shiftKey ? 'add' : 'replace' });
+      }
+      setWin(null);
+      return;
+    }
+    setWin(null);
+    if ((e.button === 0 || pc.touch) && !spaceDown.current) handleClick(local(e), view, e.shiftKey);
   };
 
   const onLeave = () => {
@@ -167,7 +199,6 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
   };
 
   const v = view;
-  const sel = selection;
   const resultsView = state.view !== 'model';
 
   const content: ReactNode[] = [];
@@ -177,7 +208,7 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     for (const k of model.members) {
       const pts = polylines.get(k.id) ?? [];
       const sp = pts.map((p) => toScreen(v, p.x, p.y));
-      const isSel = sel?.kind === 'member' && sel.id === k.id;
+      const isSel = isSelected(selection, 'member', k.id);
       const color = isSel ? 'var(--selected)' : resultsView ? 'var(--member-dim)' : 'var(--member)';
       const ptsAttr = sp.map((p) => `${p.x},${p.y}`).join(' ');
       // pórtico: traço cheio; somente axial: traço fino; somente flexão: traço duplo
@@ -233,7 +264,7 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     }
     for (const n of model.nodes) {
       const p = toScreen(v, n.x, n.y);
-      const isSel = sel?.kind === 'node' && sel.id === n.id;
+      const isSel = isSelected(selection, 'node', n.id);
       const isStart = barStart === n.id;
       content.push(
         <circle
@@ -264,7 +295,35 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
         content.push(<line key="rubber" x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--accent)" strokeWidth={2} strokeDasharray="5 4" />);
       }
     }
-    if ((tool === 'node' || tool === 'bar') && cursor) {
+    for (const [i, m] of (marks ?? []).entries()) {
+      if (!Number.isFinite(m.x) || !Number.isFinite(m.y)) continue;
+      const c = toScreen(v, m.x, m.y);
+      content.push(
+        <g key={`mark-${i}`} stroke="var(--accent)" strokeWidth={1.6} data-testid="preview-mark">
+          <circle cx={c.x} cy={c.y} r={6} fill="var(--accent-soft)" />
+          <line x1={c.x - 11} y1={c.y} x2={c.x + 11} y2={c.y} />
+          <line x1={c.x} y1={c.y - 11} x2={c.x} y2={c.y + 11} />
+        </g>,
+      );
+    }
+    if (win) {
+      const crossing = win.x1 < win.x0;
+      content.push(
+        <rect
+          key="window"
+          x={Math.min(win.x0, win.x1)}
+          y={Math.min(win.y0, win.y1)}
+          width={Math.abs(win.x1 - win.x0)}
+          height={Math.abs(win.y1 - win.y0)}
+          fill="var(--accent-soft)"
+          fillOpacity={0.35}
+          stroke="var(--accent)"
+          strokeDasharray={crossing ? '5 4' : undefined}
+          data-testid="select-window"
+        />,
+      );
+    }
+    if ((tool === 'node' || tool === 'bar' || pick) && cursor) {
       const c = toScreen(v, cursor.x, cursor.y);
       content.push(
         <g key="cursor" stroke="var(--accent)" strokeWidth={1}>
@@ -277,15 +336,16 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
   }
 
   const hint =
-    tool === 'select'
-      ? 'Clique para selecionar · arraste para mover a vista · roda do mouse para zoom'
+    hintText ??
+    (tool === 'select'
+      ? 'Clique seleciona (Shift soma) · arrastar faz a janela de seleção · botão do meio, direito ou Espaço movem a vista · roda: zoom'
       : tool === 'node'
-        ? 'Clique para criar um nó · clique sobre uma barra ou arco para inserir um nó nele'
+        ? 'Clique para criar um nó · sobre uma barra ou arco, o nó entra nele'
         : tool === 'bar'
           ? barStart
             ? 'Clique no nó final · Esc ou botão direito para terminar'
             : 'Clique no ponto inicial da barra'
-          : 'Defina a equação do arco no painel à direita';
+          : 'Defina o arco no painel à direita');
 
   return (
     <div ref={wrapRef} className={`canvas-wrap tool-${tool}${panning ? ' panning' : ''}`}>
@@ -299,6 +359,10 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
         onPointerLeave={onLeave}
         onContextMenu={(e) => {
           e.preventDefault();
+          if (suppressMenu.current) {
+            suppressMenu.current = false;
+            return;
+          }
           dispatch({ type: 'set', patch: { barStart: null } });
         }}
       >

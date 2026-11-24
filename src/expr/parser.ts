@@ -232,3 +232,26 @@ export function compileExpr(src: string): Compiled {
     throw e;
   }
 }
+
+/**
+ * Troca cada ocorrência da variável x na expressão por `replacement` (que deve vir entre
+ * parênteses, como "(x-3)"). Funções e constantes não são tocadas. Expressão que não se
+ * consegue ler volta igual.
+ */
+export function substituteX(src: string, replacement: string): string {
+  let toks: Tok[];
+  try {
+    toks = tokenize(src);
+  } catch {
+    return src;
+  }
+  let out = '';
+  let last = 0;
+  for (const t of toks) {
+    if (t.t === 'id' && t.v === 'x') {
+      out += src.slice(last, t.pos) + replacement;
+      last = t.pos + 1;
+    }
+  }
+  return out + src.slice(last);
+}

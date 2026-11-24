@@ -1,18 +1,35 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Tool } from './state';
+import type { NodeMode, Tool } from './state';
+import { NumField } from './widgets';
 import { examples } from '../model/examples';
+
+/** Fecha um menu aberto com clique fora dele ou com Esc (o Esc não passa adiante). */
+function useCloseOnOutside(open: boolean, ref: React.RefObject<HTMLElement>, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        close();
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+}
 
 function Menu({ label, children, testid }: { label: string; children: (close: () => void) => ReactNode; testid?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
+  useCloseOnOutside(open, ref, () => setOpen(false));
   return (
     <div className="menu" ref={ref}>
       <button className="btn" data-testid={testid} onClick={() => setOpen((o) => !o)}>
@@ -138,45 +155,95 @@ const ICONS: Record<Tool, ReactNode> = {
 const LABEL: Record<Tool, string> = { select: 'Selecionar', node: 'Nó', bar: 'Barra', arc: 'Arco' };
 const KEY: Record<Tool, string> = { select: 'V', node: 'N', bar: 'B', arc: 'A' };
 
+const NODE_MODE_LABEL: Record<NodeMode, string> = { click: 'Clicar no desenho', coords: 'Informar coordenadas' };
+
 export function ToolPanel({
   tool,
   setTool,
+  nodeMode,
   grid,
   setGrid,
   snap,
   setSnap,
   onFit,
+  canDuplicate,
+  onDuplicate,
 }: {
   tool: Tool;
-  setTool(t: Tool): void;
+  setTool(t: Tool, nodeMode?: NodeMode): void;
+  nodeMode: NodeMode;
   grid: number;
   setGrid(g: number): void;
   snap: boolean;
   setSnap(s: boolean): void;
   onFit(): void;
+  canDuplicate: boolean;
+  onDuplicate(): void;
 }) {
+  const [nodeMenu, setNodeMenu] = useState<{ left: number; top: number } | null>(null);
+  const nodeRef = useRef<HTMLDivElement>(null);
+  useCloseOnOutside(!!nodeMenu, nodeRef, () => setNodeMenu(null));
   return (
     <nav className="tools">
-      {(Object.keys(LABEL) as Tool[]).map((t) => (
-        <button key={t} className={`tool${tool === t ? ' active' : ''}`} data-testid={`tool-${t}`} title={`${LABEL[t]} (${KEY[t]})`} onClick={() => setTool(t)}>
-          {ICONS[t]}
-          {LABEL[t]}
-        </button>
-      ))}
+      {(Object.keys(LABEL) as Tool[]).map((t) =>
+        t === 'node' ? (
+          <div key={t} className="tool-wrap" ref={nodeRef}>
+            <button
+              className={`tool${tool === t ? ' active' : ''}`}
+              data-testid="tool-node"
+              title={`${LABEL[t]} (${KEY[t]}): ${NODE_MODE_LABEL[nodeMode].toLowerCase()}`}
+              aria-haspopup="menu"
+              aria-expanded={!!nodeMenu}
+              onClick={(e) => {
+                // a lista fica fixa na tela, ao lado do botão (a coluna de ferramentas rola e cortaria a lista)
+                const r = e.currentTarget.getBoundingClientRect();
+                setNodeMenu((o) => (o ? null : { left: r.right + 6, top: r.top }));
+              }}
+            >
+              {ICONS[t]}
+              {LABEL[t]} ▾
+            </button>
+            {nodeMenu && (
+              <div className="menu-list tool-menu" role="menu" style={{ position: 'fixed', left: nodeMenu.left, top: nodeMenu.top }}>
+                {(Object.keys(NODE_MODE_LABEL) as NodeMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    role="menuitem"
+                    className={tool === 'node' && nodeMode === mode ? 'active' : ''}
+                    data-testid={`node-mode-${mode}`}
+                    onClick={() => {
+                      setNodeMenu(null);
+                      setTool('node', mode);
+                    }}
+                  >
+                    {NODE_MODE_LABEL[mode]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <button key={t} className={`tool${tool === t ? ' active' : ''}`} data-testid={`tool-${t}`} title={`${LABEL[t]} (${KEY[t]})`} onClick={() => setTool(t)}>
+            {ICONS[t]}
+            {LABEL[t]}
+          </button>
+        ),
+      )}
       <hr />
-      <label htmlFor="grid-sel">Grade (m)</label>
-      <select id="grid-sel" value={grid} onChange={(e) => setGrid(Number(e.target.value))}>
-        {[0.1, 0.25, 0.5, 1].map((g) => (
-          <option key={g} value={g}>
-            {String(g).replace('.', ',')}
-          </option>
-        ))}
-      </select>
+      <label htmlFor="grid-step">Grade (m)</label>
+      <NumField value={grid} testid="grid-step" valid={(v) => v > 0} title="Passo da grade: qualquer valor positivo (0,01; 0,1; 2,5…)" onCommit={setGrid} />
       <label className="check" style={{ justifyContent: 'center' }}>
         <input type="checkbox" id="snap-toggle" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
         Snap
       </label>
       <hr />
+      <button className="tool" onClick={onDuplicate} disabled={!canDuplicate} title="Duplicar a seleção (Ctrl+D)" data-testid="duplicate">
+        <svg viewBox="0 0 24 24">
+          <rect x="4" y="8" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M9 8V5.5A1.5 1.5 0 0 1 10.5 4H18.5A1.5 1.5 0 0 1 20 5.5V13.5A1.5 1.5 0 0 1 18.5 15H15" fill="none" stroke="currentColor" strokeWidth="1.7" />
+        </svg>
+        Duplicar
+      </button>
       <button className="tool" onClick={onFit} title="Enquadrar o modelo (F)" data-testid="fit">
         <svg viewBox="0 0 24 24">
           <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" strokeWidth="1.8" />

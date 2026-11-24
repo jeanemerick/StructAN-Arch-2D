@@ -142,3 +142,41 @@ export function snapAlongMember(m: Model, k: Member, at: number, grid: number): 
   const t = Math.abs(dx) >= Math.abs(dy) ? (snap(ni.x + dx * at) - ni.x) / dx : (snap(ni.y + dy * at) - ni.y) / dy;
   return t > 1e-3 && t < 1 - 1e-3 ? t : at;
 }
+
+/**
+ * Itens dentro de uma janela de seleção (coordenadas do mundo). 'inside': só o que está inteiro
+ * dentro (janela da esquerda para a direita); 'crossing': o que a janela toca (da direita para a esquerda).
+ */
+export function itemsInWindow(m: Model, r: Bounds, mode: 'inside' | 'crossing', polylines?: Map<Id, Pt[]>): { nodes: Id[]; members: Id[] } {
+  const inR = (p: Pt) => p.x >= r.minX && p.x <= r.maxX && p.y >= r.minY && p.y <= r.maxY;
+  const nodes = m.nodes.filter((n) => inR(n)).map((n) => n.id);
+  const members: Id[] = [];
+  for (const k of m.members) {
+    const pts = polylines?.get(k.id) ?? memberPolyline(m, k);
+    if (pts.length === 0) continue;
+    if (mode === 'inside' ? pts.every(inR) : pts.some(inR) || pts.some((p, i) => i > 0 && segmentCrossesRect(pts[i - 1], p, r))) members.push(k.id);
+  }
+  if (mode === 'inside') return { nodes, members };
+  return { nodes, members };
+}
+
+function segmentCrossesRect(a: Pt, b: Pt, r: Bounds): boolean {
+  // recorte de Liang–Barsky
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const clip = (p: number, q: number) => {
+    if (p === 0) return q >= 0;
+    const t = q / p;
+    if (p < 0) {
+      if (t > t1) return false;
+      if (t > t0) t0 = t;
+    } else {
+      if (t < t0) return false;
+      if (t < t1) t1 = t;
+    }
+    return true;
+  };
+  return clip(-dx, a.x - r.minX) && clip(dx, r.maxX - a.x) && clip(-dy, a.y - r.minY) && clip(dy, r.maxY - a.y) && t0 <= t1;
+}

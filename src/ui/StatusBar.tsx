@@ -58,7 +58,7 @@ export function StatusBar({ view, setView, scale, setScale, showValues, setShowV
         </label>
       </div>
       <div className="statusline">
-        <span style={{ minWidth: 170 }}>{cursor ? `x: ${formatNumber(cursor.x, 2)} m   y: ${formatNumber(cursor.y, 2)} m` : ' '}</span>
+        <span style={{ minWidth: 190 }} data-testid="cursor-pos">{cursor ? `x: ${formatNumber(cursor.x, 3)} m   y: ${formatNumber(cursor.y, 3)} m` : " "}</span>
         {analysis.ok ? (
           <span className="status ok" data-testid="status">
             <span className="dot" />

@@ -49,8 +49,8 @@ describe('equações prontas', () => {
     expect(c.ok).toBe(true);
     if (c.ok) expect(Math.abs(c.fn(0) - 3)).toBeLessThan(1e-9);
   });
-  it('circular com flecha maior que meio vão lança erro', () => {
-    expect(() => circular(0, 0, 10, 6)).toThrow(/flecha/i);
+  it('circular com altura do arco maior que meio vão lança erro', () => {
+    expect(() => circular(0, 0, 10, 6)).toThrow(/altura do arco/i);
   });
 });
 

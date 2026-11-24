@@ -47,7 +47,7 @@ describe('reducer', () => {
     s = reducer(s, { type: 'load', model: emptyModel() });
     expect(s.past).toHaveLength(0);
     expect(s.future).toHaveLength(0);
-    expect(s.selection).toBeNull();
+    expect(s.selection).toEqual({ nodes: [], members: [] });
     expect(s.barStart).toBeNull();
   });
 
@@ -56,7 +56,7 @@ describe('reducer', () => {
     s = reducer(s, { type: 'apply', fn: addAt(0, 0) });
     s = reducer(s, { type: 'select', selection: { kind: 'node', id: 'n1' } });
     s = reducer(s, { type: 'apply', fn: (m) => deleteNode(m, 'n1') });
-    expect(s.selection).toBeNull();
+    expect(s.selection).toEqual({ nodes: [], members: [] });
   });
 
   it('trocar de ferramenta cancela a barra em construção', () => {

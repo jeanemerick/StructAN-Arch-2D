@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { parseNumber } from './format';
 
 /** Mostra um número sem ruído de ponto flutuante, com vírgula decimal. */
@@ -19,10 +19,14 @@ interface NumProps {
   disabled?: boolean;
   testid?: string;
   title?: string;
+  inputRef?: Ref<HTMLInputElement>;
 }
 
-/** Campo numérico: aceita vírgula ou ponto, aplica ao sair do campo ou com Enter. */
-export function NumField({ value, onCommit, unit, factor = 1, valid, disabled, testid, title }: NumProps) {
+/**
+ * Campo numérico: aceita vírgula ou ponto, aplica ao sair do campo ou com Enter. Valor não
+ * finito (NaN) aparece vazio. Dentro de um FormScope, o Enter também envia o formulário.
+ */
+export function NumField({ value, onCommit, unit, factor = 1, valid, disabled, testid, title, inputRef }: NumProps) {
   const autoId = useId();
   const shown = showNumber(value / factor);
   const [draft, setDraft] = useState(shown);
@@ -55,6 +59,7 @@ export function NumField({ value, onCommit, unit, factor = 1, valid, disabled, t
         type="text"
         inputMode="decimal"
         id={testid ?? autoId}
+        ref={inputRef}
         value={draft}
         disabled={disabled}
         data-testid={testid}
@@ -96,5 +101,33 @@ export function Check({ checked, onChange, children, testid }: { checked: boolea
       <input type="checkbox" id={testid ?? autoId} checked={checked} data-testid={testid} onChange={(e) => onChange(e.target.checked)} />
       {children}
     </label>
+  );
+}
+
+/**
+ * Formulário de criação ou edição: Enter num campo de texto (depois de o campo confirmar o
+ * valor) envia; Esc cancela. O envio roda depois de o React aplicar o valor do campo.
+ */
+export function FormScope({ onSubmit, onCancel, children, testid }: { onSubmit(): void; onCancel?(): void; children: ReactNode; testid?: string }) {
+  const latest = useRef({ onSubmit, onCancel });
+  latest.current = { onSubmit, onCancel };
+  return (
+    <div
+      className="form-scope"
+      data-testid={testid}
+      onKeyDown={(e) => {
+        const t = e.target as HTMLInputElement;
+        const isText = t.tagName === 'INPUT' && t.type !== 'checkbox' && t.type !== 'radio';
+        if (e.key === 'Enter' && isText) {
+          e.preventDefault();
+          setTimeout(() => latest.current.onSubmit(), 0);
+        } else if (e.key === 'Escape') {
+          e.stopPropagation();
+          setTimeout(() => latest.current.onCancel?.(), 0);
+        }
+      }}
+    >
+      {children}
+    </div>
   );
 }

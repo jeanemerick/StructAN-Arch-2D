@@ -1,11 +1,11 @@
 import { useEffect, useState, type Dispatch } from 'react';
 import type { Arc, Behavior, DistLoad, Member, Model, Thermal } from '../../model/types';
-import { deleteMember, splitMember, updateArc, updateMember } from '../../model/ops';
+import { deleteMember, regenerateArc, splitMember, updateArc, updateArcSegments, updateMember } from '../../model/ops';
 import type { Action } from '../state';
-import { Check, Field, NumField } from '../widgets';
+import { Check, Field, FormScope, NumField } from '../widgets';
 import { formatValue } from '../format';
 import { memberPolyline } from '../geometry';
-import { ArcFields, type ArcDraft } from './ArcForm';
+import { ArcEditFields, type ArcEditDraft } from './ArcForm';
 
 const DIR_LABEL: Record<DistLoad['dir'], string> = {
   globalY: 'Vertical (Y global)',
@@ -36,32 +36,47 @@ function memberLength(m: Model, k: Member): number {
 function ArcEditor({ arc, model, dispatch }: { arc: Arc; model: Model; dispatch: Dispatch<Action> }) {
   const ni = model.nodes.find((n) => n.id === arc.ni)!;
   const nj = model.nodes.find((n) => n.id === arc.nj)!;
-  const fromArc = (): ArcDraft => ({
-    preset: 'free',
-    expr: arc.expr,
-    xi: ni.x,
-    xj: nj.x,
-    nSeg: arc.nSeg,
-    x0: ni.x,
-    y0: ni.y,
-    L: nj.x - ni.x,
-    f: 1,
-    sectionId: arc.sectionId,
-  });
-  const [draft, setDraft] = useState<ArcDraft>(fromArc);
-  useEffect(() => setDraft(fromArc()), [arc.id, arc.expr, arc.nSeg, ni.x, nj.x]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fromArc = (): ArcEditDraft => ({ shape: arc.gen?.shape ?? 'parabola', rise: arc.gen?.rise ?? 1, expr: arc.expr, xi: ni.x, xj: nj.x, nSeg: arc.nSeg });
+  const [draft, setDraft] = useState<ArcEditDraft>(fromArc);
+  const [forceFree, setForceFree] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setDraft(fromArc());
+    setForceFree(false);
+    setError(null);
+  }, [arc.id, arc.expr, arc.nSeg, arc.gen?.shape, arc.gen?.rise, ni.x, nj.x]); // eslint-disable-line react-hooks/exhaustive-deps
+  const generated = !!arc.gen && !forceFree;
+  const submit = () => {
+    let r: Model | { error: string };
+    if (generated) {
+      r = regenerateArc(model, arc.gen!, { shape: draft.shape, rise: draft.rise });
+      if (!('error' in r)) r = updateArcSegments(r, arc.id, draft.nSeg);
+    } else {
+      r = updateArc(model, arc.id, { expr: draft.expr, nSeg: draft.nSeg, xi: draft.xi, xj: draft.xj });
+    }
+    if ('error' in r) {
+      setError(r.error);
+      return;
+    }
+    setError(null);
+    const next = r;
+    dispatch({ type: 'apply', fn: () => next });
+  };
   return (
-    <ArcFields
+    <ArcEditFields
       draft={draft}
-      setDraft={setDraft}
-      submitLabel="Aplicar ao arco"
-      testPrefix="arcedit"
-      onSubmit={(d) => {
-        const r = updateArc(model, arc.id, { expr: d.expr, nSeg: d.nSeg, xi: d.xi, xj: d.xj });
-        if ('error' in r) return r.error;
-        dispatch({ type: 'apply', fn: () => r });
-        return null;
+      setDraft={(d) => {
+        setError(null);
+        setDraft(d);
       }}
+      generated={generated}
+      error={error}
+      onSubmit={submit}
+      onReset={() => {
+        setDraft(fromArc());
+        setError(null);
+      }}
+      onFree={() => setForceFree(true)}
     />
   );
 }
@@ -116,6 +131,14 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
   if (!ni || !nj) return null;
 
   const setLoads = (loads: DistLoad[]) => apply((m) => updateMember(m, member.id, { loads }));
+  const doSplit = () => {
+    try {
+      const r = splitMember(model, member.id, splitAt);
+      dispatch({ type: 'apply', fn: () => r.model, select: { kind: 'node', id: r.nodeId } });
+    } catch {
+      /* posição inválida: o botão já fica desativado */
+    }
+  };
   const setThermal = (p: Partial<Thermal>) => {
     const next = { tExt: member.thermal?.tExt ?? 0, tInt: member.thermal?.tInt ?? 0, ...p };
     apply((m) => updateMember(m, member.id, { thermal: next.tExt === 0 && next.tInt === 0 ? undefined : next }));
@@ -218,21 +241,15 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
       </p>
 
       <h4>Inserir nó</h4>
-      <div className="row">
-        <span className="lbl">{isArc ? 'na abscissa x' : 'na fração (0–1)'}</span>
-        <NumField value={splitAt} unit={isArc ? 'm' : undefined} testid="split-at" onCommit={setSplitAt} />
-        <button
-          className="btn outline"
-          disabled={!splitValid}
-          data-testid="split-member"
-          onClick={() => {
-            const r = splitMember(model, member.id, splitAt);
-            dispatch({ type: 'apply', fn: () => r.model, select: { kind: 'node', id: r.nodeId } });
-          }}
-        >
-          Inserir
-        </button>
-      </div>
+      <FormScope onSubmit={() => splitValid && doSplit()} testid="split-form">
+        <div className="row">
+          <span className="lbl">{isArc ? 'na abscissa x' : 'na fração (0–1)'}</span>
+          <NumField value={splitAt} unit={isArc ? 'm' : undefined} testid="split-at" onCommit={setSplitAt} />
+          <button className="btn outline" disabled={!splitValid} data-testid="split-member" onClick={doSplit}>
+            Inserir
+          </button>
+        </div>
+      </FormScope>
 
       <div className="row" style={{ marginTop: 16 }}>
         <button className="btn outline danger" onClick={() => apply((m) => deleteMember(m, member.id))}>

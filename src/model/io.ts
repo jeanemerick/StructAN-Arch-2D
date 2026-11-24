@@ -1,4 +1,4 @@
-import type { Behavior, DistLoad, Member, Model, NodalLoad, Node, Section, Shape, Support, Thermal } from './types';
+import type { ArcGen, ArcShape, Behavior, DistLoad, Member, Model, NodalLoad, Node, Section, Shape, Support, Thermal } from './types';
 import { ALPHA_DEFAULT } from './ops';
 
 export function serialize(m: Model): string {
@@ -72,6 +72,14 @@ function parseThermal(v: unknown, where: string): Thermal | undefined {
   if (v === undefined) return undefined;
   if (!isObj(v)) throw new FormatError(`Temperatura inválida em ${where}`);
   return { tExt: num(v.tExt, `${where}.tExt`), tInt: num(v.tInt, `${where}.tInt`) };
+}
+
+const SHAPES: ArcShape[] = ['parabola', 'circular', 'catenary'];
+
+function parseGen(v: unknown, where: string): ArcGen | undefined {
+  if (v === undefined) return undefined;
+  if (!isObj(v) || !SHAPES.includes(v.shape as ArcShape)) throw new FormatError(`Parâmetros do arco inválidos em ${where}`);
+  return { shape: v.shape as ArcShape, rise: num(v.rise, `${where}.rise`), a: str(v.a, `${where}.a`), b: str(v.b, `${where}.b`) };
 }
 
 function unique(ids: string[], what: string): void {
@@ -159,7 +167,14 @@ export function parseModel(text: string): { ok: true; model: Model } | { ok: fal
       if (!sectionIds.has(base.sectionId)) throw new FormatError(`A barra ${base.id} aponta para uma seção inexistente`);
       let out: Member;
       if (k.kind === 'bar') out = { kind: 'bar', ...base };
-      else if (k.kind === 'arc') out = { kind: 'arc', ...base, expr: str(k.expr, `${w}.expr`), nSeg: num(k.nSeg, `${w}.nSeg`) };
+      else if (k.kind === 'arc') {
+        out = { kind: 'arc', ...base, expr: str(k.expr, `${w}.expr`), nSeg: num(k.nSeg, `${w}.nSeg`) };
+        const gen = parseGen(k.gen, `${w}.gen`);
+        if (gen) {
+          if (!nodeIds.has(gen.a) || !nodeIds.has(gen.b)) throw new FormatError(`As nascenças do arco ${base.id} não existem`);
+          out.gen = gen;
+        }
+      }
       else throw new FormatError(`Tipo de barra desconhecido em ${w}`);
       if (thermal) out.thermal = thermal;
       return out;

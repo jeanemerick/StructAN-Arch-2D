@@ -1,4 +1,6 @@
-import type { Arc, DistLoad, Id, Member, MemberBase, Model, NodalLoad, Node, Section, Support } from './types';
+import type { Arc, ArcGen, ArcShape, DistLoad, Id, Member, MemberBase, Model, NodalLoad, Node, Section, Support } from './types';
+import { arcBetween } from './presets';
+import { substituteX } from '../expr/parser';
 import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
 
 /** Distância máxima para considerar dois nós o mesmo ponto (m). */
@@ -124,8 +126,15 @@ export function deleteNode(m: Model, id: Id): Model {
   return {
     ...m,
     nodes: m.nodes.filter((n) => n.id !== id),
-    members: m.members.filter((k) => k.ni !== id && k.nj !== id),
+    members: m.members.filter((k) => k.ni !== id && k.nj !== id).map((k) => dropGenIf(k, (g) => g.a === id || g.b === id)),
   };
+}
+
+/** Arco sem os parâmetros geradores quando `cond` vale (o arco passa a ser de equação livre). */
+function dropGenIf(k: Member, cond: (g: ArcGen) => boolean): Member {
+  if (k.kind !== 'arc' || !k.gen || !cond(k.gen)) return k;
+  const { gen: _gen, ...rest } = k;
+  return rest;
 }
 
 // ---------------------------------------------------------------- barras e arcos
@@ -232,7 +241,97 @@ export function addArc(
     expr: a.expr,
     nSeg: a.nSeg,
   };
-  return { model: { ...n2.model, members: [...n2.model.members, arc] }, id };
+  return { model: linkArc({ ...n2.model, members: [...n2.model.members, arc] }, id), id };
+}
+
+/** Liga as extremidades do arco recém-criado ao que estiver nelas e divide o arco nos nós sobre a curva. */
+function linkArc(m: Model, id: Id): Model {
+  let out = m;
+  const arc = () => out.members.find((k) => k.id === id)!;
+  out = connectNode(out, arc().ni).model;
+  out = connectNode(out, arc().nj).model;
+  return linkMember(out, id);
+}
+
+/**
+ * Arco entre dois pontos (nós existentes a menos de 1 mm são aproveitados), com a forma e a
+ * altura do arco dadas; a equação é gerada a partir das posições finais dos nós e os
+ * parâmetros geradores ficam guardados para refazer o arco quando uma nascença se mover.
+ */
+export function addArcBetween(
+  m: Model,
+  a: { pi: { x: number; y: number }; pj: { x: number; y: number }; shape: ArcShape; rise: number; nSeg: number; sectionId: Id },
+): { model: Model; id: Id } | { error: string } {
+  const segErr = checkNSeg(a.nSeg);
+  if (segErr) return { error: segErr };
+  const [L, R] = a.pi.x <= a.pj.x ? [a.pi, a.pj] : [a.pj, a.pi];
+  try {
+    arcBetween(a.shape, L, R, a.rise);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  const n1 = placeNode(m, L.x, L.y);
+  const n2 = placeNode(n1.model, R.x, R.y);
+  if (n1.id === n2.id) return { error: 'As extremidades do arco coincidem' };
+  const out = n2.model;
+  const P = out.nodes.find((n) => n.id === n1.id)!;
+  const Q = out.nodes.find((n) => n.id === n2.id)!;
+  let gen: { expr: string };
+  try {
+    gen = arcBetween(a.shape, P, Q, a.rise);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  const c = compileArcCurve(gen.expr, P.x, Q.x);
+  if (!c.ok) return { error: c.error };
+  const id = newMemberId(out);
+  const arc: Arc = {
+    kind: 'arc',
+    id,
+    ni: n1.id,
+    nj: n2.id,
+    sectionId: a.sectionId,
+    hingeI: false,
+    hingeJ: false,
+    loads: [],
+    behavior: 'frame',
+    expr: gen.expr,
+    nSeg: a.nSeg,
+    gen: { shape: a.shape, rise: a.rise, a: n1.id, b: n2.id },
+  };
+  return { model: linkMember({ ...out, members: [...out.members, arc] }, id), id };
+}
+
+const sameGen = (g: ArcGen | undefined, h: ArcGen) => !!g && g.a === h.a && g.b === h.b;
+
+/**
+ * Refaz todos os trechos do arco gerado por `gen` a partir das posições atuais das nascenças,
+ * com forma e altura opcionalmente trocadas. Os nós internos (divisões) mantêm o x e vão para a curva.
+ */
+export function regenerateArc(m: Model, gen: ArcGen, patch: { shape?: ArcShape; rise?: number } = {}): Model | { error: string } {
+  const A = m.nodes.find((n) => n.id === gen.a);
+  const B = m.nodes.find((n) => n.id === gen.b);
+  if (!A || !B) return { error: 'As nascenças do arco não foram encontradas' };
+  if (!(A.x < B.x)) return { error: 'A nascença inicial do arco precisa ficar à esquerda da final' };
+  const next: ArcGen = { ...gen, ...patch };
+  let r: { expr: string };
+  try {
+    r = arcBetween(next.shape, A, B, next.rise);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  const c = compileArcCurve(r.expr, A.x, B.x);
+  if (!c.ok) return { error: c.error };
+  let out = m;
+  const group = m.members.filter((k): k is Arc => k.kind === 'arc' && sameGen(k.gen, gen));
+  const inner = new Set<Id>();
+  for (const k of group) for (const id of [k.ni, k.nj]) if (id !== gen.a && id !== gen.b) inner.add(id);
+  for (const id of inner) {
+    const n = out.nodes.find((q) => q.id === id)!;
+    if (!(n.x > A.x && n.x < B.x)) return { error: `O nó ${id}, que divide o arco, ficaria fora do novo vão` };
+    out = updateNode(out, id, { y: c.fn(n.x) });
+  }
+  return { ...out, members: out.members.map((k) => (k.kind === 'arc' && sameGen(k.gen, gen) ? { ...k, expr: r.expr, gen: next } : k)) };
 }
 
 export function updateArc(
@@ -255,7 +354,19 @@ export function updateArc(
   if (!c.ok) return { error: c.error };
   let out = updateNode(m, ni.id, { x: xi, y: c.fn(xi) });
   out = updateNode(out, nj.id, { x: xj, y: c.fn(xj) });
-  return { ...out, members: out.members.map((k) => (k.id === id ? { ...arc, expr, nSeg } : k)) };
+  // equação ou limites editados à mão: o arco deixa de ser gerado pelas nascenças
+  const edited = expr !== arc.expr || patch.xi !== undefined || patch.xj !== undefined;
+  return {
+    ...out,
+    members: out.members.map((k) => (k.id === id ? (edited ? dropGenIf({ ...arc, expr, nSeg }, () => true) : { ...arc, expr, nSeg }) : k)),
+  };
+}
+
+/** Troca o número de segmentos de cálculo de um arco. */
+export function updateArcSegments(m: Model, id: Id, nSeg: number): Model | { error: string } {
+  const err = checkNSeg(nSeg);
+  if (err) return { error: err };
+  return { ...m, members: m.members.map((k) => (k.id === id && k.kind === 'arc' ? { ...k, nSeg } : k)) };
 }
 
 function splitLoads(loads: DistLoad[], t: number): [DistLoad[], DistLoad[]] {
@@ -437,7 +548,13 @@ export function mergeNodes(m: Model, keep: Id, drop: Id): Model {
     if (sum.fx !== 0 || sum.fy !== 0 || sum.mz !== 0) merged.load = sum;
   }
   const members = m.members
-    .map((q) => ({ ...q, ni: q.ni === drop ? keep : q.ni, nj: q.nj === drop ? keep : q.nj }) as Member)
+    .map((q) => {
+      const r = { ...q, ni: q.ni === drop ? keep : q.ni, nj: q.nj === drop ? keep : q.nj } as Member;
+      if (r.kind === 'arc' && r.gen && (r.gen.a === drop || r.gen.b === drop)) {
+        r.gen = { ...r.gen, a: r.gen.a === drop ? keep : r.gen.a, b: r.gen.b === drop ? keep : r.gen.b };
+      }
+      return r;
+    })
     .filter((q) => q.ni !== q.nj);
   return { ...m, nodes: m.nodes.filter((n) => n.id !== drop).map((n) => (n.id === keep ? merged : n)), members };
 }
@@ -454,8 +571,10 @@ export function connectNode(m: Model, id: Id): { model: Model; id: Id } {
   let nodeId = id;
   const other = nodeNear(m, node.x, node.y, id);
   if (other) {
-    out = mergeNodes(m, other.id, id);
-    nodeId = other.id;
+    // a extremidade de arco fica onde está (precisa continuar sobre a curva)
+    const keepSelf = isArcEnd(m, id) && !isArcEnd(m, other.id);
+    out = keepSelf ? mergeNodes(m, id, other.id) : mergeNodes(m, other.id, id);
+    nodeId = keepSelf ? id : other.id;
   } else {
     const skip = (k: Member) => k.ni === id || k.nj === id;
     let hits = membersThrough(out, node.x, node.y, skip);
@@ -486,8 +605,26 @@ export function moveNode(m: Model, id: Id, patch: Partial<Pick<Node, 'x' | 'y'>>
   const x = patch.x ?? node.x;
   const y = patch.y ?? node.y;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return { error: 'Coordenadas inválidas' };
-  if (isArcEnd(m, id)) return { error: `O nó ${id} é extremidade de arco: a posição segue a equação do arco` };
-  return connectNode(updateNode(m, id, { x, y }), id);
+  const arcs = m.members.filter((k): k is Arc => k.kind === 'arc' && (k.ni === id || k.nj === id));
+  if (arcs.length === 0) return connectNode(updateNode(m, id, { x, y }), id);
+  if (!arcs.every((k) => k.gen && (k.gen.a === id || k.gen.b === id))) {
+    const inner = arcs.some((k) => k.gen);
+    return {
+      error: inner
+        ? `O nó ${id} divide um arco: a posição segue a curva. Mova as nascenças ou mude a altura do arco.`
+        : `O nó ${id} é extremidade de arco de equação livre: a posição segue a equação do arco`,
+    };
+  }
+  let out = updateNode(m, id, { x, y });
+  const done: ArcGen[] = [];
+  for (const k of arcs) {
+    if (done.some((g) => sameGen(k.gen, g))) continue;
+    done.push(k.gen!);
+    const r = regenerateArc(out, k.gen!);
+    if ('error' in r) return r;
+    out = r;
+  }
+  return connectNode(out, id);
 }
 
 /** Nó no ponto: o existente (a menos de 1 mm) ou um novo, já ligado ao que estiver ali. */
@@ -496,4 +633,90 @@ export function placeNode(m: Model, x: number, y: number): { model: Model; id: I
   if (ex) return { model: m, id: ex.id };
   const a = addNode(m, x, y);
   return connectNode(a.model, a.id);
+}
+
+// ---------------------------------------------------------------- duplicação
+
+export interface IdSelection {
+  nodes: Id[];
+  members: Id[];
+}
+
+/** Nós e barras/arcos efetivamente copiados: as barras selecionadas levam os seus nós. */
+function closure(m: Model, sel: IdSelection): { nodes: Node[]; members: Member[] } {
+  const members = m.members.filter((k) => sel.members.includes(k.id));
+  const ids = new Set(sel.nodes);
+  for (const k of members) {
+    ids.add(k.ni);
+    ids.add(k.nj);
+  }
+  return { nodes: m.nodes.filter((n) => ids.has(n.id)), members };
+}
+
+function fmtShift(v: number): string {
+  return String(Number(v.toPrecision(15)));
+}
+
+/**
+ * Copia os itens selecionados deslocados de (dx, dy): nós com apoios e cargas; barras e arcos
+ * com seção, rótulas, tipo, cargas e temperatura. Devolve o modelo e a seleção da cópia.
+ */
+export function duplicate(m: Model, sel: IdSelection, dx: number, dy: number): { model: Model; selection: IdSelection } {
+  const src = closure(m, sel);
+  let out = m;
+  const map = new Map<Id, Id>();
+  for (const n of src.nodes) {
+    const id = nextId('n', out.nodes.map((q) => q.id));
+    map.set(n.id, id);
+    out = { ...out, nodes: [...out.nodes, { ...n, id, x: n.x + dx, y: n.y + dy }] };
+  }
+  const newMembers: Id[] = [];
+  for (const k of src.members) {
+    const id = newMemberId(out);
+    newMembers.push(id);
+    let copy: Member = { ...k, id, ni: map.get(k.ni)!, nj: map.get(k.nj)!, loads: k.loads.map((q) => ({ ...q })) };
+    if (copy.kind === 'arc') {
+      const shifted = dx === 0 ? copy.expr : substituteX(copy.expr, `(x-${fmtShift(dx)})`);
+      const expr = dy === 0 ? shifted : `${fmtShift(dy)}+(${shifted})`;
+      copy = { ...copy, expr };
+      if (copy.gen) {
+        const a = map.get(copy.gen.a);
+        const b = map.get(copy.gen.b);
+        copy = a && b ? { ...copy, gen: { ...copy.gen, a, b } } : dropGenIf(copy, () => true);
+      }
+    }
+    out = { ...out, members: [...out.members, copy] };
+  }
+  return { model: out, selection: { nodes: [...map.values()], members: newMembers } };
+}
+
+/**
+ * Deslocamento sugerido para a cópia: para a direita de todo o modelo, com folga suficiente para
+ * os diagramas (amplitude de 12% do tamanho do modelo, de cada lado) não se sobreporem.
+ */
+export function suggestOffset(m: Model, sel: IdSelection, grid: number): { dx: number; dy: number } {
+  const src = closure(m, sel);
+  const xs = (list: Node[]) => list.map((n) => n.x);
+  const ys = (list: Node[]) => list.map((n) => n.y);
+  const arcYs = (k: Member): number[] => {
+    if (k.kind !== 'arc') return [];
+    const a = m.nodes.find((n) => n.id === k.ni);
+    const b = m.nodes.find((n) => n.id === k.nj);
+    const c = a && b ? compileArcCurve(k.expr, a.x, b.x) : null;
+    if (!a || !b || !c || !c.ok) return [];
+    return Array.from({ length: 41 }, (_, i) => c.fn(a.x + ((b.x - a.x) * i) / 40));
+  };
+  if (src.nodes.length === 0) return { dx: 0, dy: 0 };
+  const sMinX = Math.min(...xs(src.nodes));
+  const sMaxX = Math.max(...xs(src.nodes));
+  const allY = [...ys(m.nodes), ...m.members.flatMap(arcYs)];
+  const mMaxX = Math.max(...xs(m.nodes));
+  const H = Math.max(...allY) - Math.min(...allY);
+  const w = sMaxX - sMinX;
+  // folga g: g > 0,24·max(largura total, altura); com largura total = (mMaxX − mMinX) + g + w
+  const W0 = mMaxX - Math.min(...xs(m.nodes)) + w;
+  const g = Math.max((0.3 * W0) / (1 - 0.3), 0.3 * H, 1);
+  const step = grid > 0 ? grid : 0.5;
+  const raw = mMaxX - sMinX + g;
+  return { dx: Number((Math.ceil(raw / step) * step).toPrecision(12)), dy: 0 };
 }

@@ -1,5 +1,5 @@
 import type { Model } from './types';
-import { addArc, addBar, addNode, addSection, emptyModel, setNodalLoad, setSupport, splitMember, updateMember, updateSection } from './ops';
+import { addArc, addArcBetween, addBar, addNode, addSection, emptyModel, setNodalLoad, setSupport, splitMember, updateMember, updateSection } from './ops';
 import { parabola } from './presets';
 
 const FIX = { rx: true, ry: true, rz: true };
@@ -8,9 +8,9 @@ const ROLLER = { rx: false, ry: true, rz: false };
 const projQ = (q: number) => ({ dir: 'globalY' as const, ref: 'projection' as const, qi: q, qj: q });
 const lenQ = (q: number) => ({ dir: 'globalY' as const, ref: 'length' as const, qi: q, qj: q });
 
-function arcOrThrow(r: ReturnType<typeof addArc>) {
-  if ('error' in r) throw new Error(r.error);
-  return r;
+function arcOrThrow<T>(r: T | { error: string }): T {
+  if (r && typeof r === 'object' && 'error' in r) throw new Error((r as { error: string }).error);
+  return r as T;
 }
 
 function vigaBiapoiada(): Model {
@@ -84,7 +84,7 @@ function arcoAtirantado(): Model {
 /** Arco da imagem 1: parábola de vão 6 m e altura 1,5 m, triarticulado, q = 10 kN/m por projeção. */
 function arcoTriarticuladoFaixa(): Model {
   let m = updateSection(emptyModel(), 's1', { name: 'Arco 20×40' });
-  const r = arcOrThrow(addArc(m, { expr: parabola(0, 0, 6, 1.5), xi: 0, xj: 6, nSeg: 40, sectionId: 's1' }));
+  const r = arcOrThrow(addArcBetween(m, { pi: { x: 0, y: 0 }, pj: { x: 6, y: 0 }, shape: 'parabola', rise: 1.5, nSeg: 40, sectionId: 's1' }));
   const arc = r.model.members[0];
   const s = splitMember(r.model, r.id, 3);
   m = s.model;

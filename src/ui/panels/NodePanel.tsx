@@ -23,7 +23,10 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
   const apply = (fn: (m: Model) => Model) => dispatch({ type: 'apply', fn });
   const sup = node.support;
   const load = node.load ?? { fx: 0, fy: 0, mz: 0 };
-  const arcEnd = model.members.some((k) => k.kind === 'arc' && (k.ni === node.id || k.nj === node.id));
+  const arcsHere = model.members.filter((k) => k.kind === 'arc' && (k.ni === node.id || k.nj === node.id));
+  // nascença de arco gerado entre nós pode se mover (o arco é refeito); extremidade de arco livre e nó interno, não
+  const springing = arcsHere.length > 0 && arcsHere.every((k) => k.kind === 'arc' && k.gen && (k.gen.a === node.id || k.gen.b === node.id));
+  const arcEnd = arcsHere.length > 0 && !springing;
   const preset = presetOf(sup);
   const [moveError, setMoveError] = useState<string | null>(null);
   const loose = membersThrough(model, node.x, node.y, (k) => k.ni === node.id || k.nj === node.id);
@@ -67,7 +70,8 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
           <NumField value={node.y} unit="m" disabled={arcEnd} testid="node-y" onCommit={(y) => move({ y })} />
         </Field>
       </div>
-      {arcEnd && <p className="help">Extremidade de arco: a posição segue a equação e os limites do arco.</p>}
+      {arcEnd && <p className="help">Extremidade de arco por equação livre ou nó que divide um arco: a posição segue a curva.</p>}
+      {springing && <p className="help">Nascença de arco: ao mudar a posição, o arco é refeito com a mesma forma e altura.</p>}
       {!arcEnd && <p className="help">Um nó levado para cima de uma barra, de um arco ou de outro nó passa a ficar ligado a ele.</p>}
       {moveError && <div className="err">{moveError}</div>}
       {loose.length > 0 && (

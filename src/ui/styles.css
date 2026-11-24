@@ -322,6 +322,36 @@ select {
   color: var(--muted);
   text-align: center;
 }
+.tools .num {
+  width: 58px;
+}
+.tools .num input {
+  font-size: 11px;
+  padding: 3px 4px;
+  text-align: center;
+}
+.tool:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.tool-wrap {
+  position: relative;
+}
+.tool-menu {
+  min-width: 200px;
+  max-width: calc(100vw - 90px);
+}
+.tool-menu button.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.notice.confirm {
+  flex-direction: column;
+  border-left-color: var(--accent);
+}
+.form-scope {
+  display: block;
+}
 .tools select {
   width: 58px;
   font-size: 11px;
@@ -726,8 +756,13 @@ table.res tr.clickable:hover {
     padding-right: 6px;
   }
   .tool,
-  .tools select {
+  .tools select,
+  .tools .num {
     width: 50px;
+  }
+  .tool-menu {
+    right: auto;
+    min-width: 190px;
   }
   .side {
     border-left: 0;
@@ -739,5 +774,12 @@ table.res tr.clickable:hover {
   }
   .viewtab {
     padding: 4px 8px;
+  }
+  .hint {
+    font-size: 11px;
+    padding: 3px 7px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
