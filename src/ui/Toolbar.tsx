@@ -51,6 +51,7 @@ interface TopProps {
   canRedo: boolean;
   onUndo(): void;
   onRedo(): void;
+  onHelp(): void;
 }
 
 export function TopBar(p: TopProps) {
@@ -112,12 +113,15 @@ export function TopBar(p: TopProps) {
           </>
         )}
       </Menu>
+      <button className="btn" onClick={p.onHelp} data-testid="help-open" title="Manual do programa (F1)">
+        Ajuda
+      </button>
       <div className="spacer" />
       <button className="btn" disabled={!p.canUndo} onClick={p.onUndo} title="Desfazer (Ctrl+Z)" data-testid="undo">
-        ↶ Desfazer
+        ↶<span className="lbl-wide"> Desfazer</span>
       </button>
       <button className="btn" disabled={!p.canRedo} onClick={p.onRedo} title="Refazer (Ctrl+Y)" data-testid="redo">
-        ↷ Refazer
+        ↷<span className="lbl-wide"> Refazer</span>
       </button>
     </header>
   );

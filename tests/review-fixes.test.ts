@@ -142,3 +142,17 @@ describe('revisão 5 — atalhos de teclado', () => {
     expect(hotkeyTarget(null)).toBe('other');
   });
 });
+
+describe('etapa 2 — salto em degrau na equação do arco', () => {
+  it('x/abs(x) (deslocado para não cair numa amostra) é recusado como descontínuo', async () => {
+    const { compileArcCurve } = await import('../src/model/curve');
+    const r = compileArcCurve('1+(x-2.00013)/abs(x-2.00013)', 0, 4);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/salto/);
+  });
+  it('curva contínua muito inclinada (atan(1000·x)) continua aceita', async () => {
+    const { compileArcCurve } = await import('../src/model/curve');
+    expect(compileArcCurve('atan(1000*(x-2.00013))', 0, 4).ok).toBe(true);
+    expect(compileArcCurve('sqrt(25-x^2)', -5, 5).ok).toBe(true);
+  });
+});

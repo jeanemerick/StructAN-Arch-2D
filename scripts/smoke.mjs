@@ -174,6 +174,15 @@ await page.click('[data-testid=issues-toggle]');
 check((await count('[data-testid=issues-list] .issue')) >= 1, 'avisos listados a partir da barra de status');
 await page.keyboard.press('Escape');
 
+// E1: Ajuda com índice e busca, Esc fecha
+await page.click('[data-testid=help-open]');
+await page.waitForSelector('[data-testid=help]');
+await page.fill('[data-testid=help-search]', 'projecao');
+const found = await page.locator('[data-testid^=help-section-]:visible').count();
+check(found >= 1 && found < 12, `busca na Ajuda filtra as seções (${found} com "projecao")`);
+await page.keyboard.press('Escape');
+check((await count('[data-testid=help]')) === 0, 'Esc fecha a Ajuda');
+
 // estrutura instável mostra mensagem e não quebra a tela
 await openExample('viga-biapoiada');
 const nodeBox = await page.locator('[data-node=n1]').boundingBox();

@@ -17,6 +17,7 @@ import { pngBlob, stationsCsv } from './export';
 import { saveFile, warmUpSaver } from './saver';
 import { hotkeyTarget } from './hotkeys';
 import { Field, FormScope, NumField } from './widgets';
+import { HelpPanel } from './help/HelpPanel';
 
 const STORAGE_KEY = 'structan-arch-2d:modelo';
 const START_EXAMPLE = 'arco-parabolico-biarticulado';
@@ -146,6 +147,7 @@ export default function App() {
   const [coordPt, setCoordPt] = useState<Pt>({ x: 0, y: 0 });
   const [dupOffset, setDupOffset] = useState<Pt | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -213,9 +215,18 @@ export default function App() {
   stateRef.current = state;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setHelpOpen(true);
+        return;
+      }
       const scope = hotkeyTarget(e.target as HTMLInputElement | null);
       if (scope === 'text') return;
       const s = stateRef.current;
+      if (helpOpen) {
+        if (e.key === 'Escape') setHelpOpen(false);
+        return;
+      }
       if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase();
         if (k === 'z' && !e.shiftKey) {
@@ -414,6 +425,7 @@ export default function App() {
         canRedo={state.future.length > 0}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
+        onHelp={() => setHelpOpen(true)}
       />
       <input
         ref={fileRef}
@@ -500,6 +512,7 @@ export default function App() {
           {tab === 'sections' && <SectionsPanel model={model} dispatch={dispatch} />}
         </div>
       </aside>
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       <StatusBar
         view={state.view}
         setView={(view) => dispatch({ type: 'setView', view })}

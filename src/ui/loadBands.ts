@@ -3,7 +3,7 @@ import type { Pt } from './geometry';
 
 /**
  * Cargas distribuídas em direção global desenhadas em faixas retas (tela, em pixels):
- * a carga vertical numa faixa horizontal acima (ou abaixo) do elemento, cobrindo a projeção dele;
+ * a carga vertical numa faixa horizontal acima (ou sob) o elemento, cobrindo a projeção dele;
  * a horizontal numa faixa vertical ao lado. A altura das setas é a intensidade por metro de
  * projeção (carga por comprimento é convertida). Trechos vizinhos com a mesma carga formam uma
  * faixa só; faixas não cobrem barras nem umas às outras.
