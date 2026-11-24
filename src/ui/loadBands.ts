@@ -72,7 +72,8 @@ function pieces(model: Model, screen: Map<Id, Pt[]>, world: Map<Id, Pt[]>): { li
     if (!sp || !wp || sp.length < 2) continue;
     k.loads.forEach((l, li) => {
       if (l.qi === 0 && l.qj === 0) return;
-      if (l.dir !== 'globalX' && l.dir !== 'globalY') {
+      // carga local, ou que troca de sinal ao longo da barra (a faixa de um lado só não a representaria): sobre o eixo
+      if ((l.dir !== 'globalX' && l.dir !== 'globalY') || l.qi * l.qj < 0) {
         onAxis.push({ memberId: k.id, loadIndex: li });
         return;
       }

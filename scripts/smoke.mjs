@@ -86,7 +86,10 @@ for (const view of ['M', 'deformed']) {
   console.log(`captura: ${file}`);
 }
 
-// D3: Esc numa vista de resultado volta ao modelo
+// D3: Esc numa vista de resultado volta ao modelo, mesmo com o foco no formulário do arco
+const arcLine = await page.locator('[data-member=m1]').boundingBox();
+await page.mouse.click(arcLine.x + arcLine.width / 2, arcLine.y + 2);
+await page.click('[data-testid=arcedit-submit]');
 await page.keyboard.press('Escape');
 check((await page.getAttribute('[data-testid=tab-model]', 'class')).includes('active'), 'Esc volta da vista de resultado para o modelo');
 
@@ -128,6 +131,15 @@ for (const [x, y] of [
 }
 check((await count('[data-node]')) === 2, 'dois nós criados por coordenadas com Enter');
 check((await page.evaluate(() => document.activeElement?.id)) === 'coord-x', 'foco volta ao X depois de criar o nó');
+// Enter com um campo inválido não cria nada
+await page.fill('[data-testid=coord-x]', '6');
+await page.keyboard.press('Tab');
+await page.fill('[data-testid=coord-y]', '1,5m');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(50);
+check((await count('[data-node]')) === 2, 'Enter com valor inválido (1,5m) não cria o nó');
+await page.fill('[data-testid=coord-y]', '0');
+await page.keyboard.press('Tab');
 await page.click('[data-testid=tool-arc]');
 for (const [id, v] of [
   ['arc-xi', '0'],

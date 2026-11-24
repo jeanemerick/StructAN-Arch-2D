@@ -1,7 +1,7 @@
 import type { Issue, Model } from './types';
 import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
 import type { Behavior, Section } from './types';
-import { membersThrough, sectionHeight, sectionProps } from './ops';
+import { membersThrough, nodeNear, sectionHeight, sectionProps } from './ops';
 
 /** Tolerância para considerar o nó sobre a curva do arco (m). */
 const ON_CURVE_TOL = 1e-5;
@@ -160,6 +160,32 @@ export function validateModel(m: Model): Issue[] {
   if (m.members.length > 0) {
     const supported = m.nodes.some((n) => n.support && (n.support.rx || n.support.ry || n.support.rz || (n.support.kx ?? 0) > 0 || (n.support.ky ?? 0) > 0 || (n.support.kz ?? 0) > 0));
     if (!supported) issues.push({ severity: 'error', message: 'A estrutura não tem apoios' });
+  }
+
+  // nós distintos no mesmo ponto (menos de 1 mm): parecem ligados, mas não estão
+  const seenPair = new Set<string>();
+  for (const n of m.nodes) {
+    const other = nodeNear(m, n.x, n.y, n.id);
+    if (!other) continue;
+    const key = [n.id, other.id].sort().join('|');
+    if (seenPair.has(key)) continue;
+    seenPair.add(key);
+    issues.push({
+      severity: 'error',
+      message: `Os nós ${n.id} e ${other.id} estão no mesmo ponto mas não estão ligados. Selecione um deles e clique em "Ligar ao elemento" para fundi-los.`,
+      target: { kind: 'node', id: n.id },
+    });
+  }
+
+  // barras retas repetidas (mesmas pontas): rigidez dobrada sem querer
+  const pairs = new Map<string, string>();
+  for (const k of m.members) {
+    if (k.kind !== 'bar') continue;
+    const key = [k.ni, k.nj].sort().join('|');
+    const prev = pairs.get(key);
+    if (prev) {
+      issues.push({ severity: 'error', message: `As barras ${prev} e ${k.id} ligam os mesmos nós: exclua uma delas`, target: { kind: 'member', id: k.id } });
+    } else pairs.set(key, k.id);
   }
 
   // nós soltos: sobre o interior de uma barra ou arco sem estar ligados, ou sem barra nenhuma

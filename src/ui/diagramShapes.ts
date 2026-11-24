@@ -31,15 +31,24 @@ interface End {
 }
 
 /**
- * Direção do desenho: M sempre do lado tracionado (−y local), independentemente do sentido
- * da barra; N e Q do lado +y local, com o sentido da cadeia (barra percorrida ao contrário
- * desenha do lado oposto, para o diagrama não trocar de lado numa emenda alinhada).
+ * Direção do desenho no sentido da cadeia: N e Q do lado +y local; M do lado −y local, que é
+ * o tracionado. Peça percorrida ao contrário desenha do lado oposto. Para M, o valor dessa peça
+ * também troca de sinal (signedValue), de modo que o ponto do diagrama continua do lado
+ * tracionado e o sinal fica coerente ao longo da cadeia.
  */
 export function drawDir(effort: Effort, p: { tx: number; ty: number }, reversed: boolean): [number, number] {
   const nx = -p.ty;
   const ny = p.tx;
-  if (effort === 'M') return [-nx, -ny];
-  return reversed ? [-nx, -ny] : [nx, ny];
+  const s = (effort === 'M' ? -1 : 1) * (reversed ? -1 : 1);
+  return [s * nx, s * ny];
+}
+
+/**
+ * Valor do esforço no sentido da cadeia. N e Q não dependem do sentido da barra; M depende
+ * (o lado −y local troca), então numa peça percorrida ao contrário ele muda de sinal.
+ */
+export function signedValue(effort: Effort, v: number, reversed: boolean): number {
+  return effort === 'M' && reversed ? -v : v;
 }
 
 /**
@@ -139,7 +148,7 @@ export function buildChains(model: Model, stations: Map<Id, Station[]>, effort: 
       list.forEach((p, i) => {
         if (i === 0 && pts.length > 0) return; // ponto da emenda já incluído
         const [dx, dy] = drawDir(effort, p, reversed);
-        pts.push({ x: p.x, y: p.y, v: p[effort], dx, dy, memberId: id });
+        pts.push({ x: p.x, y: p.y, v: signedValue(effort, p[effort], reversed), dx, dy, memberId: id });
       });
     }
     chains.push({ members: seq.map((s) => s.id), reversed: seq.map((s) => s.reversed), pts });

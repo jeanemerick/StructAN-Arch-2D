@@ -31,12 +31,13 @@ export interface MeshElem {
 }
 
 /**
- * Barra somente flexão (inextensível): rigidez axial de penalidade EA = P·12EI/L², isto é,
- * P vezes a rigidez transversal do próprio elemento. Com P = 10⁷ a deformação axial fica
- * 10⁷ vezes menor que a de flexão, e o esforço normal, que sai de EA·ΔL/L, mantém cerca de
- * 8 algarismos (a fatoração LDLᵀ é estável para a direção rígida).
+ * Barra somente flexão (inextensível): rigidez axial de penalidade EA = P·12EI/Lm², com Lm o
+ * comprimento da barra ou do arco inteiro (não do trecho da poligonal). Assim a flexibilidade
+ * axial da peça fica P vezes menor que a de flexão dela, qualquer que seja o número de
+ * segmentos, e a rigidez de um trecho curto não estoura o condicionamento da matriz
+ * (P·Lm/ℓ ≈ 2·10⁸ com 200 segmentos). O erro de inextensibilidade é da ordem de 1/P.
  */
-export const INEXTENSIBLE_PENALTY = 1e7;
+export const INEXTENSIBLE_PENALTY = 1e6;
 
 export interface Mesh {
   nodes: MeshNode[];
@@ -131,14 +132,17 @@ export function buildMesh(model: Model): Mesh {
     const L = Math.hypot(dx, dy);
     const c = dx / L;
     const s = dy / L;
-    const EA = rest.behavior === 'bending' ? (INEXTENSIBLE_PENALTY * 12 * rest.EI) / (L * L) : rest.EA;
-    elems.push({ a, b, L, c, s, load: load(c, s), ...rest, EA });
+    elems.push({ a, b, L, c, s, load: load(c, s), ...rest });
     return elems.length - 1;
   };
 
+  const penalty = (EI: number, Lm: number) => (INEXTENSIBLE_PENALTY * 12 * EI) / (Lm * Lm);
+
   for (const mem of model.members) {
     const sec = sections.get(mem.sectionId)!;
-    const { EA, EI } = sectionProps(sec);
+    const props = sectionProps(sec);
+    const EI = props.EI;
+    let EA = props.EA;
     const behavior = mem.behavior;
     const axial = behavior === 'axial';
     const th = mem.thermal;
@@ -151,6 +155,7 @@ export function buildMesh(model: Model): Mesh {
     const a = modelNode(mem.ni);
     const b = modelNode(mem.nj);
     if (mem.kind === 'bar') {
+      if (behavior === 'bending') EA = penalty(EI, Math.hypot(nodes[b].x - nodes[a].x, nodes[b].y - nodes[a].y));
       const e = pushElem(
         a,
         b,
@@ -165,6 +170,11 @@ export function buildMesh(model: Model): Mesh {
     const curve = compileArcCurve(mem.expr, xi, xj);
     if (!curve.ok) throw new Error(curve.error);
     const pts = arcPoints(curve.fn, xi, xj, mem.nSeg);
+    if (behavior === 'bending') {
+      let Lm = 0;
+      for (let k = 1; k < pts.length; k++) Lm += Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y);
+      EA = penalty(EI, Lm);
+    }
     const idx = [a];
     for (let k = 1; k < pts.length - 1; k++) {
       nodes.push({ x: pts[k].x, y: pts[k].y });

@@ -209,11 +209,17 @@ export function ResultsLayer({ model, analysis, view, v, scale, showValues, show
           return { x: (t.x - base.x) / tl, y: (t.y - base.y) / tl };
         })() };
       };
+      // extremos no sentido da cadeia (M de peça percorrida ao contrário troca de sinal)
+      const extOf = (id: Id) => {
+        const ex = extremes.get(id)![view];
+        if (view !== 'M' || !reversed.get(id)) return ex;
+        return { max: { ...ex.min, value: -ex.min.value }, min: { ...ex.max, value: -ex.max.value } };
+      };
       // extremos da estrutura (destaque) e de cada barra (menos peso), exatos
       let gMax: { id: Id; e: MemberExtremes['N']['max'] } | null = null;
       let gMin: { id: Id; e: MemberExtremes['N']['min'] } | null = null;
-      for (const [id, ex] of extremes) {
-        const { max, min } = ex[view];
+      for (const id of extremes.keys()) {
+        const { max, min } = extOf(id);
         if (max.value > tol && (!gMax || max.value > gMax.e.value)) gMax = { id, e: max };
         if (min.value < -tol && (!gMin || min.value < gMin.e.value)) gMin = { id, e: min };
       }
@@ -230,12 +236,13 @@ export function ResultsLayer({ model, analysis, view, v, scale, showValues, show
       // pontas das cadeias (apoios, cantos e saltos) já ganham rótulo próprio
       const chainEnds = chains.flatMap((ch) => [ch.pts[0], ch.pts[ch.pts.length - 1]]);
       const shown: { x: number; y: number; value: number }[] = [];
-      for (const [id, ex] of extremes) {
+      for (const id of extremes.keys()) {
+        const ext = extOf(id);
         const mem = model.members.find((q) => q.id === id)!;
         const ni = model.nodes.find((n) => n.id === mem.ni)!;
         const nj = model.nodes.find((n) => n.id === mem.nj)!;
         const span = Math.hypot(nj.x - ni.x, nj.y - ni.y);
-        for (const e of [ex[view].max, ex[view].min]) {
+        for (const e of [ext.max, ext.min]) {
           if (Math.abs(e.value) < 0.02 * maxAbs) continue;
           if (globals.some((g) => Math.abs(g.e.value - e.value) < tol && Math.hypot(g.e.x - e.x, g.e.y - e.y) < 1e-6)) continue;
           if (chainEnds.some((p) => Math.hypot(e.x - p.x, e.y - p.y) < 0.03 * span)) continue;

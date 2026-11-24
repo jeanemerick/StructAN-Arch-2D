@@ -123,7 +123,8 @@ export const MANUAL: HelpSection[] = [
           </li>
           <li>
             <b>Duplicar</b> (<K>Ctrl</K>+<K>D</K>): copia a seleção com apoios, cargas, rótulas, tipos, seções e temperatura. O deslocamento sugerido deixa folga para os diagramas
-            das duas estruturas não se sobreporem e pode ser editado antes de confirmar com <K>Enter</K>. A cópia fica selecionada e <K>Ctrl</K>+<K>Z</K> a remove num passo só.
+            das duas estruturas não se sobreporem e pode ser editado antes de confirmar com <K>Enter</K>. A cópia fica selecionada e <K>Ctrl</K>+<K>Z</K> a remove num passo só. Com
+            um deslocamento igual ao vão, a cópia se liga ao original nos nós que coincidem: é um jeito rápido de montar uma viga contínua.
           </li>
           <li>
             <b>Enquadrar</b> (<K>F</K>): ajusta a vista ao modelo inteiro.
@@ -228,8 +229,9 @@ export const MANUAL: HelpSection[] = [
             aceita: aplique a carga nos nós ou mude o tipo. É equivalente a uma barra de pórtico com as duas rótulas.
           </li>
           <li>
-            <b>Somente flexão</b> (inextensível): só EI; a deformação axial é desprezada. O programa adota uma rigidez axial de penalidade, 10⁷ vezes a rigidez transversal do próprio
-            elemento, o que deixa a variação de comprimento desprezível e mantém o esforço normal preciso.
+            <b>Somente flexão</b> (inextensível): só EI; a deformação axial é desprezada. O programa adota uma rigidez axial de penalidade que deixa a flexibilidade axial da barra
+            (ou do arco inteiro) 10⁶ vezes menor que a de flexão: a variação de comprimento fica desprezível e o esforço normal sai do equilíbrio. Se a barra for impedida de se
+            alongar com a temperatura, o programa avisa, pois nesse caso o esforço normal de uma barra inextensível não tem sentido físico.
           </li>
         </ul>
         <p>Arcos aceitam Pórtico e Somente flexão. A deformação por cortante é desprezada em todos os tipos (teoria de Euler–Bernoulli).</p>

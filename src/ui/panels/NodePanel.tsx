@@ -1,6 +1,6 @@
 import { useState, type Dispatch } from 'react';
 import type { Model, Node, Support } from '../../model/types';
-import { connectNode, deleteNode, membersThrough, moveNode, setNodalLoad, setSupport } from '../../model/ops';
+import { connectNode, deleteNode, membersThrough, moveNode, nodeNear, setNodalLoad, setSupport } from '../../model/ops';
 import type { Action } from '../state';
 import { Check, Field, NumField } from '../widgets';
 import { UNIT } from '../format';
@@ -30,6 +30,7 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
   const preset = presetOf(sup);
   const [moveError, setMoveError] = useState<string | null>(null);
   const loose = membersThrough(model, node.x, node.y, (k) => k.ni === node.id || k.nj === node.id);
+  const twin = nodeNear(model, node.x, node.y, node.id);
 
   const move = (patch: { x?: number; y?: number }) => {
     const r = moveNode(model, node.id, patch);
@@ -74,9 +75,13 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
       {springing && <p className="help">Nascença de arco: ao mudar a posição, o arco é refeito com a mesma forma e altura.</p>}
       {!arcEnd && <p className="help">Um nó levado para cima de uma barra, de um arco ou de outro nó passa a ficar ligado a ele.</p>}
       {moveError && <div className="err">{moveError}</div>}
-      {loose.length > 0 && (
+      {(loose.length > 0 || twin) && (
         <div className="notice" data-testid="loose-node">
-          <span>Este nó está sobre {model.members.find((k) => k.id === loose[0].id)?.kind === 'arc' ? 'um arco' : 'uma barra'} mas não está ligado a ele.</span>
+          <span>
+            {twin
+              ? `Este nó está no mesmo ponto do nó ${twin.id}, mas os dois não estão ligados.`
+              : `Este nó está sobre ${model.members.find((k) => k.id === loose[0].id)?.kind === 'arc' ? 'um arco' : 'uma barra'} mas não está ligado a ele.`}
+          </span>
           <button
             className="btn outline"
             data-testid="link-node"

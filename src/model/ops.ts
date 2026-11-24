@@ -556,7 +556,33 @@ export function mergeNodes(m: Model, keep: Id, drop: Id): Model {
       return r;
     })
     .filter((q) => q.ni !== q.nj);
-  return { ...m, nodes: m.nodes.filter((n) => n.id !== drop).map((n) => (n.id === keep ? merged : n)), members };
+  return { ...m, nodes: m.nodes.filter((n) => n.id !== drop).map((n) => (n.id === keep ? merged : n)), members: dedupeBars(members) };
+}
+
+/** Carga vista do outro sentido da barra: valores trocam de ponta e as direções locais invertem. */
+function reverseLoad(q: DistLoad): DistLoad {
+  const local = q.dir === 'localX' || q.dir === 'localY';
+  return { ...q, qi: local ? -q.qj : q.qj, qj: local ? -q.qi : q.qi };
+}
+
+/** Barras retas com as mesmas pontas viram uma só (a primeira), com as cargas das outras somadas. */
+function dedupeBars(members: Member[]): Member[] {
+  const out: Member[] = [];
+  for (const k of members) {
+    if (k.kind !== 'bar') {
+      out.push(k);
+      continue;
+    }
+    const i = out.findIndex((q) => q.kind === 'bar' && ((q.ni === k.ni && q.nj === k.nj) || (q.ni === k.nj && q.nj === k.ni)));
+    if (i < 0) {
+      out.push(k);
+      continue;
+    }
+    const first = out[i];
+    const extra = first.ni === k.ni ? k.loads : k.loads.map(reverseLoad);
+    out[i] = { ...first, loads: [...first.loads, ...extra] };
+  }
+  return out;
 }
 
 /**
@@ -687,7 +713,17 @@ export function duplicate(m: Model, sel: IdSelection, dx: number, dy: number): {
     }
     out = { ...out, members: [...out.members, copy] };
   }
-  return { model: out, selection: { nodes: [...map.values()], members: newMembers } };
+  // a cópia segue a regra de ligação: nó sobre nó existente funde, nó sobre barra divide a barra
+  const before = new Set(m.members.map((k) => k.id));
+  const nodes = new Set<Id>();
+  for (const id of map.values()) {
+    if (!out.nodes.some((n) => n.id === id)) continue;
+    const r = connectNode(out, id);
+    out = r.model;
+    nodes.add(r.id);
+  }
+  const members = out.members.filter((k) => !before.has(k.id)).map((k) => k.id);
+  return { model: out, selection: { nodes: [...nodes].filter((id) => out.nodes.some((n) => n.id === id)), members } };
 }
 
 /**

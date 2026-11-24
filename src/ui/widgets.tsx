@@ -106,13 +106,16 @@ export function Check({ checked, onChange, children, testid }: { checked: boolea
 
 /**
  * Formulário de criação ou edição: Enter num campo de texto (depois de o campo confirmar o
- * valor) envia; Esc cancela. O envio roda depois de o React aplicar o valor do campo.
+ * valor) envia, a não ser que algum campo esteja com valor inválido; Esc cancela e segue
+ * adiante (a página aplica a ordem do Esc). O envio roda depois de o React aplicar o valor.
  */
 export function FormScope({ onSubmit, onCancel, children, testid }: { onSubmit(): void; onCancel?(): void; children: ReactNode; testid?: string }) {
   const latest = useRef({ onSubmit, onCancel });
   latest.current = { onSubmit, onCancel };
+  const ref = useRef<HTMLDivElement>(null);
   return (
     <div
+      ref={ref}
       className="form-scope"
       data-testid={testid}
       onKeyDown={(e) => {
@@ -120,9 +123,16 @@ export function FormScope({ onSubmit, onCancel, children, testid }: { onSubmit()
         const isText = t.tagName === 'INPUT' && t.type !== 'checkbox' && t.type !== 'radio';
         if (e.key === 'Enter' && isText) {
           e.preventDefault();
-          setTimeout(() => latest.current.onSubmit(), 0);
+          setTimeout(() => {
+            // campo com valor inválido: não envia e devolve o foco a ele
+            const bad = ref.current?.querySelector<HTMLInputElement>('.num.invalid input');
+            if (bad) {
+              bad.focus();
+              return;
+            }
+            latest.current.onSubmit();
+          }, 0);
         } else if (e.key === 'Escape') {
-          e.stopPropagation();
           setTimeout(() => latest.current.onCancel?.(), 0);
         }
       }}

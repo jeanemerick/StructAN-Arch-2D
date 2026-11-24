@@ -195,6 +195,22 @@ export function analyze(model: Model): Analysis {
     endForces.push(fl);
   });
 
+  // --- barra somente flexão (inextensível) impedida de se alongar com a temperatura: o esforço
+  // normal sai da rigidez de penalidade e não tem sentido físico
+  const warnedInext = new Set<Id>();
+  mesh.elems.forEach((e, k) => {
+    if (e.behavior !== 'bending' || e.dT === 0 || warnedInext.has(e.memberId)) return;
+    const free = Math.abs(e.EA * e.alpha * e.dT);
+    if (Math.abs(endForces[k][0]) > 1e-3 * free) {
+      warnedInext.add(e.memberId);
+      warnings.push({
+        severity: 'warning',
+        message: `A barra somente flexão ${e.memberId} está impedida de se alongar com a temperatura: como ela é inextensível, o esforço normal não tem sentido físico. Mude o tipo para Pórtico.`,
+        target: { kind: 'member', id: e.memberId },
+      });
+    }
+  });
+
   // --- reações: R = Σ forças nodo→elemento − carga aplicada
   const sum = new Float64Array(ndof);
   mesh.elems.forEach((e, k) => {
