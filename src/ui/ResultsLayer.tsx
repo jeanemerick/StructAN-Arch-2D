@@ -227,6 +227,9 @@ export function ResultsLayer({ model, analysis, view, v, scale, showValues, show
         reqs.push({ key, text, priority: 100, candidates: [a(18), a(30), a(16, 34), a(16, -34), a(42)] });
         styles.set(key, { color: colorOf(g.e.value), weight: 700, testid: `extreme-label-${g.tag === 'máx' ? 'max' : 'min'}` });
       }
+      // pontas das cadeias (apoios, cantos e saltos) já ganham rótulo próprio
+      const chainEnds = chains.flatMap((ch) => [ch.pts[0], ch.pts[ch.pts.length - 1]]);
+      const shown: { x: number; y: number; value: number }[] = [];
       for (const [id, ex] of extremes) {
         const mem = model.members.find((q) => q.id === id)!;
         const ni = model.nodes.find((n) => n.id === mem.ni)!;
@@ -235,8 +238,10 @@ export function ResultsLayer({ model, analysis, view, v, scale, showValues, show
         for (const e of [ex[view].max, ex[view].min]) {
           if (Math.abs(e.value) < 0.02 * maxAbs) continue;
           if (globals.some((g) => Math.abs(g.e.value - e.value) < tol && Math.hypot(g.e.x - e.x, g.e.y - e.y) < 1e-6)) continue;
-          // só extremos no interior (os das pontas já aparecem nos rótulos das pontas)
-          if (Math.hypot(e.x - ni.x, e.y - ni.y) < 0.03 * span || Math.hypot(e.x - nj.x, e.y - nj.y) < 0.03 * span) continue;
+          if (chainEnds.some((p) => Math.hypot(e.x - p.x, e.y - p.y) < 0.03 * span)) continue;
+          // o mesmo ponto como extremo de duas peças (fecho de um arco dividido, por exemplo): um rótulo só
+          if (shown.some((p) => Math.abs(p.value - e.value) < tol && Math.hypot(p.x - e.x, p.y - e.y) < 1e-6)) continue;
+          shown.push({ x: e.x, y: e.y, value: e.value });
           const d = diagramPoint(id, e);
           out.push(<circle key={`mx-${id}-${e.value}`} cx={d.at.x} cy={d.at.y} r={2.2} fill={colorOf(e.value)} />);
           const key = `m-${id}-${e.value > 0 ? 'p' : 'n'}`;
