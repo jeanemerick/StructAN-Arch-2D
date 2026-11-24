@@ -6,6 +6,7 @@ import type { View } from './state';
 import { modelBounds, toScreen, type Pt, type ViewT } from './geometry';
 import { Arrow, Label, MomentArrow } from './glyphs';
 import { formatValue } from './format';
+import { buildChains, chainShape } from './diagramShapes';
 
 export interface HoverInfo {
   px: number;
@@ -82,64 +83,47 @@ export function ResultsLayer({ model, analysis, view, v, scale, showValues, hove
 
   if (view === 'N' || view === 'Q' || view === 'M') {
     const k = diagramFactor(model, stations, view, scale);
-    const side = view === 'M' ? -1 : 1;
     let maxAbs = 0;
     for (const st of stations.values()) for (const p of st) maxAbs = Math.max(maxAbs, Math.abs(p[view]));
-    for (const [id, st] of stations) {
-      if (st.length < 2) continue;
-      const base = st.map((p) => toScreen(v, p.x, p.y));
-      const off = st.map((p) => {
-        const a = side * p[view] * k;
-        return toScreen(v, p.x - p.ty * a, p.y + p.tx * a);
-      });
-      // faixas coloridas pelo sinal
-      for (let i = 0; i + 1 < st.length; i++) {
-        const v0 = st[i][view];
-        const v1 = st[i + 1][view];
-        const quad = (b0: Pt, o0: Pt, b1: Pt, o1: Pt, val: number, key: string) =>
-          out.push(
-            <polygon
-              key={key}
-              points={`${b0.x},${b0.y} ${o0.x},${o0.y} ${o1.x},${o1.y} ${b1.x},${b1.y}`}
-              fill={val >= 0 ? 'var(--pos)' : 'var(--neg)'}
-              fillOpacity={0.2}
-              stroke="none"
-            />,
-          );
-        if (v0 * v1 < 0) {
-          const t = v0 / (v0 - v1);
-          const bz = { x: base[i].x + (base[i + 1].x - base[i].x) * t, y: base[i].y + (base[i + 1].y - base[i].y) * t };
-          quad(base[i], off[i], bz, bz, v0, `d-${id}-${i}-a`);
-          quad(bz, bz, base[i + 1], off[i + 1], v1, `d-${id}-${i}-b`);
-        } else {
-          quad(base[i], off[i], base[i + 1], off[i + 1], v0 + v1, `d-${id}-${i}`);
-        }
-      }
-      const outline = [base[0], ...off, base[base.length - 1]];
-      out.push(
-        <polyline key={`o-${id}`} points={outline.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="var(--outline)" strokeWidth={1.2} strokeLinejoin="round" />,
+    const scr = (p: Pt) => toScreen(v, p.x, p.y);
+    const pts = (list: Pt[]) =>
+      list
+        .map((p) => {
+          const q = scr(p);
+          return `${q.x},${q.y}`;
+        })
+        .join(' ');
+    buildChains(model, stations, view).forEach((ch, ci) => {
+      const shape = chainShape(ch, k);
+      // um polígono por trecho de mesmo sinal: sem emendas entre trechos nem paredes em nós que só dividem a peça
+      shape.fills.forEach((f, fi) =>
+        out.push(<polygon key={`d-${ci}-${fi}`} points={pts(f.pts)} fill={f.sign > 0 ? 'var(--pos)' : 'var(--neg)'} fillOpacity={0.2} stroke="none" />),
       );
+      out.push(<polyline key={`o-${ci}`} points={pts(shape.outline)} fill="none" stroke="var(--outline)" strokeWidth={1.2} strokeLinejoin="round" />);
       if (showValues && maxAbs > 1e-9) {
+        const st = ch.pts;
         const idx = new Set([0, st.length - 1]);
         let iMax = 0;
         st.forEach((p, i) => {
-          if (Math.abs(p[view]) > Math.abs(st[iMax][view])) iMax = i;
+          if (Math.abs(p.v) > Math.abs(st[iMax].v)) iMax = i;
         });
-        if (iMax > 0 && iMax < st.length - 1 && Math.abs(st[iMax][view]) > 1.02 * Math.max(Math.abs(st[0][view]), Math.abs(st[st.length - 1][view]))) idx.add(iMax);
+        if (iMax > 0 && iMax < st.length - 1 && Math.abs(st[iMax].v) > 1.02 * Math.max(Math.abs(st[0].v), Math.abs(st[st.length - 1].v))) idx.add(iMax);
         for (const i of idx) {
-          const val = st[i][view];
+          const val = st[i].v;
           if (Math.abs(val) < 1e-6 * maxAbs) continue;
-          const dx = off[i].x - base[i].x;
-          const dy = off[i].y - base[i].y;
+          const b = scr(st[i]);
+          const o = scr(shape.offsets[i]);
+          const dx = o.x - b.x;
+          const dy = o.y - b.y;
           const L = Math.hypot(dx, dy) || 1;
           out.push(
-            <Label key={`l-${id}-${i}`} x={off[i].x + (dx / L) * 12} y={off[i].y + (dy / L) * 12} color={val >= 0 ? 'var(--pos)' : 'var(--neg)'} weight={600}>
+            <Label key={`l-${ci}-${i}`} x={o.x + (dx / L) * 12} y={o.y + (dy / L) * 12} color={val >= 0 ? 'var(--pos)' : 'var(--neg)'} weight={600}>
               {formatValue(val)}
             </Label>,
           );
         }
       }
-    }
+    });
     const unit = view === 'M' ? 'kN·m' : 'kN';
     out.push(
       <Label key="legend" x={12} y={legendY} anchor="start" color="var(--muted)">
