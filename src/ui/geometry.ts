@@ -131,7 +131,7 @@ export function snapAlongMember(m: Model, k: Member, at: number, grid: number): 
   const ni = m.nodes.find((n) => n.id === k.ni);
   const nj = m.nodes.find((n) => n.id === k.nj);
   if (!ni || !nj || !(grid > 0)) return at;
-  const snap = (v: number) => Math.round(v / grid) * grid;
+  const snap = (v: number) => Number((Math.round(v / grid) * grid).toPrecision(12));
   if (k.kind === 'arc') {
     const x = snap(at);
     const eps = 1e-3 * (nj.x - ni.x);

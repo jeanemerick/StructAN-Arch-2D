@@ -1,6 +1,6 @@
 import type { Issue, Model } from './types';
 import { compileArcCurve, NSEG_MAX, NSEG_MIN } from './curve';
-import { nodesOnSegment, sectionArea } from './ops';
+import { membersThrough, sectionArea } from './ops';
 
 /** Tolerância para considerar o nó sobre a curva do arco (m). */
 const ON_CURVE_TOL = 1e-5;
@@ -83,43 +83,39 @@ export function validateModel(m: Model): Issue[] {
     if (!supported) issues.push({ severity: 'error', message: 'A estrutura não tem apoios' });
   }
 
-  // nó sobre o interior de uma barra ou arco sem estar ligado a ela/ele
-  for (const k of m.members) {
-    const ni = nodes.get(k.ni);
-    const nj = nodes.get(k.nj);
-    if (!ni || !nj) continue;
-    let loose: string[] = [];
-    if (k.kind === 'bar') {
-      loose = nodesOnSegment(m, ni, nj).map((p) => p.id);
-    } else {
-      const c = compileArcCurve(k.expr, ni.x, nj.x);
-      if (!c.ok) continue;
-      const tol = 1e-6 * Math.max(1, nj.x - ni.x);
-      loose = m.nodes
-        .filter((n) => n.id !== ni.id && n.id !== nj.id && n.x > ni.x + tol && n.x < nj.x - tol && Math.abs(c.fn(n.x) - n.y) <= tol)
-        .map((n) => n.id);
-    }
-    for (const id of loose) {
-      issues.push({
-        severity: 'warning',
-        message: `O nó ${id} está sobre ${k.kind === 'arc' ? 'o arco' : 'a barra'} ${k.id} mas não está ligado a ${k.kind === 'arc' ? 'ele' : 'ela'}. Para ligar, selecione ${k.kind === 'arc' ? 'o arco' : 'a barra'} e insira um nó nesse ponto.`,
-        target: { kind: 'node', id },
-      });
-    }
-  }
-
+  // nós soltos: sobre o interior de uma barra ou arco sem estar ligados, ou sem barra nenhuma
   const connected = new Set<string>();
   for (const k of m.members) {
     connected.add(k.ni);
     connected.add(k.nj);
   }
   for (const n of m.nodes) {
-    if (!connected.has(n.id)) {
+    const loaded = !!n.load && (n.load.fx !== 0 || n.load.fy !== 0 || n.load.mz !== 0);
+    const supported = !!n.support && (n.support.rx || n.support.ry || n.support.rz || !!n.support.kx || !!n.support.ky || !!n.support.kz);
+    const target = { kind: 'node' as const, id: n.id };
+    const what = loaded && supported ? 'carga e apoio' : loaded ? 'carga' : 'apoio';
+    const hits = membersThrough(m, n.x, n.y, (k) => k.ni === n.id || k.nj === n.id);
+    if (hits.length > 0) {
+      const k = m.members.find((q) => q.id === hits[0].id)!;
+      const el = k.kind === 'arc' ? `o arco ${k.id}` : `a barra ${k.id}`;
+      const pron = k.kind === 'arc' ? 'ele' : 'ela';
+      const grave = loaded || supported || connected.has(n.id);
       issues.push({
-        severity: 'warning',
-        message: `O nó ${n.id} não está ligado a nenhuma barra e será ignorado`,
-        target: { kind: 'node', id: n.id },
+        severity: grave ? 'error' : 'warning',
+        message: `O nó ${n.id} está sobre ${el} mas não está ligado a ${pron}. Selecione o nó e clique em "Ligar ao elemento".`,
+        target,
       });
+      continue;
+    }
+    if (connected.has(n.id)) continue;
+    if (loaded || supported) {
+      issues.push({
+        severity: 'error',
+        message: `O nó ${n.id} tem ${what} mas não está ligado a nenhuma barra. Leve-o para uma barra ou arco, ou remova ${loaded && supported ? 'a carga e o apoio' : loaded ? 'a carga' : 'o apoio'}.`,
+        target,
+      });
+    } else {
+      issues.push({ severity: 'warning', message: `O nó ${n.id} não está ligado a nenhuma barra e será ignorado`, target });
     }
   }
   return issues;

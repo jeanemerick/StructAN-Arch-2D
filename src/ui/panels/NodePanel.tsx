@@ -1,6 +1,6 @@
-import type { Dispatch } from 'react';
+import { useState, type Dispatch } from 'react';
 import type { Model, Node, Support } from '../../model/types';
-import { deleteNode, setNodalLoad, setSupport, updateNode } from '../../model/ops';
+import { connectNode, deleteNode, membersThrough, moveNode, setNodalLoad, setSupport } from '../../model/ops';
 import type { Action } from '../state';
 import { Check, Field, NumField } from '../widgets';
 import { UNIT } from '../format';
@@ -25,6 +25,18 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
   const load = node.load ?? { fx: 0, fy: 0, mz: 0 };
   const arcEnd = model.members.some((k) => k.kind === 'arc' && (k.ni === node.id || k.nj === node.id));
   const preset = presetOf(sup);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const loose = membersThrough(model, node.x, node.y, (k) => k.ni === node.id || k.nj === node.id);
+
+  const move = (patch: { x?: number; y?: number }) => {
+    const r = moveNode(model, node.id, patch);
+    if ('error' in r) {
+      setMoveError(r.error);
+      return;
+    }
+    setMoveError(null);
+    dispatch({ type: 'apply', fn: () => r.model, select: { kind: 'node', id: r.id } });
+  };
 
   const setSup = (s: Support | undefined) => apply((m) => setSupport(m, node.id, s));
   const patchSup = (p: Partial<Support>) => {
@@ -49,13 +61,30 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
       <h3>Nó {node.id}</h3>
       <div className="grid2">
         <Field label="X">
-          <NumField value={node.x} unit="m" disabled={arcEnd} testid="node-x" onCommit={(x) => apply((m) => updateNode(m, node.id, { x }))} />
+          <NumField value={node.x} unit="m" disabled={arcEnd} testid="node-x" onCommit={(x) => move({ x })} />
         </Field>
         <Field label="Y">
-          <NumField value={node.y} unit="m" disabled={arcEnd} testid="node-y" onCommit={(y) => apply((m) => updateNode(m, node.id, { y }))} />
+          <NumField value={node.y} unit="m" disabled={arcEnd} testid="node-y" onCommit={(y) => move({ y })} />
         </Field>
       </div>
       {arcEnd && <p className="help">Extremidade de arco: a posição segue a equação e os limites do arco.</p>}
+      {!arcEnd && <p className="help">Um nó levado para cima de uma barra, de um arco ou de outro nó passa a ficar ligado a ele.</p>}
+      {moveError && <div className="err">{moveError}</div>}
+      {loose.length > 0 && (
+        <div className="notice" data-testid="loose-node">
+          <span>Este nó está sobre {model.members.find((k) => k.id === loose[0].id)?.kind === 'arc' ? 'um arco' : 'uma barra'} mas não está ligado a ele.</span>
+          <button
+            className="btn outline"
+            data-testid="link-node"
+            onClick={() => {
+              const r = connectNode(model, node.id);
+              dispatch({ type: 'apply', fn: () => r.model, select: { kind: 'node', id: r.id } });
+            }}
+          >
+            Ligar ao elemento
+          </button>
+        </div>
+      )}
 
       <h4>Apoio</h4>
       <div className="chips">

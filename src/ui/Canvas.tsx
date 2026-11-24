@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type RefObject } from 'react';
-import type { DistLoad, Id, Member, Model } from '../model/types';
-import { addBar, addNode, splitMember } from '../model/ops';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type RefObject } from 'react';
+import type { DistLoad, Id, Model } from '../model/types';
+import { addBar } from '../model/ops';
+import { resolveClickNode, snapPoint } from './picking';
 import type { Analysis } from '../solver/analyze';
 import type { Action, UiState } from './state';
-import { fitView, hitTest, memberPolyline, modelBounds, snapAlongMember, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
+import { fitView, hitTest, memberPolyline, modelBounds, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
 import { Arrow, HingeGlyph, Label, MomentArrow, SupportGlyph } from './glyphs';
 import { formatValue } from './format';
 import { ResultsLayer, type HoverInfo } from './ResultsLayer';
@@ -91,41 +92,17 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
-  const snapPoint = useCallback(
-    (raw: Pt, v: ViewT): Pt => {
-      const tol = HIT_PX / v.scale;
-      for (const n of model.nodes) if (Math.hypot(n.x - raw.x, n.y - raw.y) <= tol) return { x: n.x, y: n.y };
-      if (!state.snap) return raw;
-      const g = state.grid;
-      return { x: Math.round(raw.x / g) * g, y: Math.round(raw.y / g) * g };
-    },
-    [model.nodes, state.snap, state.grid],
-  );
-
-  /** Nó existente, nó inserido sobre uma barra ou nó novo no ponto. */
-  const resolveNode = (raw: Pt, snapped: Pt, v: ViewT): { model: Model; id: Id } | null => {
-    const tol = HIT_PX / v.scale;
-    const hit = hitTest(model, raw.x, raw.y, tol, polylines);
-    if (hit?.kind === 'node') return { model, id: hit.id };
-    if (hit?.kind === 'member') {
-      const mem = model.members.find((k) => k.id === hit.id)!;
-      const at = state.snap ? snapAlongMember(model, mem, hit.at, state.grid) : hit.at;
-      if (!insideMember(model, mem, at)) return null;
-      const s = splitMember(model, hit.id, at);
-      return { model: s.model, id: s.nodeId };
-    }
-    return addNode(model, snapped.x, snapped.y);
-  };
+  const pickOpts = (v: ViewT) => ({ tol: HIT_PX / v.scale, snap: state.snap, grid: state.grid, polylines });
+  const snapAt = (raw: Pt, v: ViewT): Pt => snapPoint(model, raw, pickOpts(v));
 
   const handleClick = (p: Pt, v: ViewT) => {
     const raw = toWorld(v, p.x, p.y);
-    const snapped = snapPoint(raw, v);
     if (tool === 'select' || tool === 'arc') {
       const h = hitTest(model, raw.x, raw.y, HIT_PX / v.scale, polylines);
       dispatch({ type: 'select', selection: h ? { kind: h.kind, id: h.id } : null });
       return;
     }
-    const r = resolveNode(raw, snapped, v);
+    const r = resolveClickNode(model, raw, pickOpts(v));
     if (!r) return;
     if (tool === 'node') {
       dispatch({ type: 'apply', fn: () => r.model, select: { kind: 'node', id: r.id } });
@@ -170,7 +147,7 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
       }
     }
     const raw = toWorld(view, p.x, p.y);
-    const snapped = snapPoint(raw, view);
+    const snapped = snapAt(raw, view);
     setCursor(tool === 'node' || tool === 'bar' ? snapped : raw);
     onCursor(snapped);
   };
@@ -327,14 +304,6 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
       )}
     </div>
   );
-}
-
-function insideMember(m: Model, k: Member, at: number): boolean {
-  if (k.kind === 'bar') return at > 1e-3 && at < 1 - 1e-3;
-  const ni = m.nodes.find((n) => n.id === k.ni)!;
-  const nj = m.nodes.find((n) => n.id === k.nj)!;
-  const eps = 1e-3 * (nj.x - ni.x);
-  return at > ni.x + eps && at < nj.x - eps;
 }
 
 function GridLayer({ v, w, h, grid }: { v: ViewT; w: number; h: number; grid: number }) {

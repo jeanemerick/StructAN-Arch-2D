@@ -86,7 +86,7 @@ describe('revisão 3 — nó sobre barra sem ligação', () => {
       [mid.id, b.id],
     ]);
   });
-  it('nó sobre o interior de uma barra ou arco sem estar ligado gera aviso', () => {
+  it('nó sobre o interior de uma barra sem estar ligado: erro se ligado a outra barra; aviso se solto e sem carga', () => {
     let m = refModel();
     const a = addNode(m, 0, 0);
     const b = addNode(a.model, 6, 0);
@@ -95,8 +95,9 @@ describe('revisão 3 — nó sobre barra sem ligação', () => {
     const d = addNode(c.model, 3, 0);
     m = addBar(d.model, c.id, d.id).model;
     m = setSupport(setSupport(setSupport(m, a.id, PIN), b.id, ROLLER), c.id, FIX);
-    const w = validateModel(m).filter((i) => i.severity === 'warning');
-    expect(w.some((i) => i.target?.kind === 'node' && i.target.id === d.id && /não está ligado/.test(i.message))).toBe(true);
+    // etapa 2: a barra c–d termina sobre a–b sem ligação; o resultado sairia errado, então é erro
+    const e = validateModel(m).filter((i) => i.severity === 'error');
+    expect(e.some((i) => i.target?.kind === 'node' && i.target.id === d.id && /não está ligado/.test(i.message))).toBe(true);
 
     const arc = addArc(emptyModel(), { expr: 'x*(20-x)/20', xi: 0, xj: 20, nSeg: 20, sectionId: 's1' });
     if ('error' in arc) throw new Error(arc.error);
