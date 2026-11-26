@@ -279,7 +279,7 @@ describe('B3 — análise térmica', () => {
 });
 
 describe('formato do arquivo — versão 2', () => {
-  it('arquivo da versão 1 abre migrado: tipo Pórtico, α = 1,0×10⁻⁵ e version 2', () => {
+  it('arquivo da versão 1 abre migrado: tipo Pórtico, α = 1,0×10⁻⁵ e versão atual', () => {
     const v1 = {
       version: 1,
       nodes: [
@@ -292,7 +292,7 @@ describe('formato do arquivo — versão 2', () => {
     const r = parseModel(JSON.stringify(v1));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.model.version).toBe(2);
+    expect(r.model.version).toBe(3);
     expect(r.model.members[0].behavior).toBe('frame');
     expect(r.model.members[0].thermal).toBeUndefined();
     expect(r.model.sections[0].alpha).toBe(1e-5);

@@ -11,7 +11,7 @@ export const ALPHA_DEFAULT = 1e-5;
 
 export function emptyModel(): Model {
   return {
-    version: 2,
+    version: 3,
     nodes: [],
     members: [],
     sections: [{ id: 's1', name: 'Seção 1', E: 25e6, shape: { kind: 'rect', b: 0.2, h: 0.4 }, alpha: ALPHA_DEFAULT }],
@@ -107,6 +107,18 @@ export function setSupport(m: Model, id: Id, support: Support | undefined): Mode
       if (n.id !== id) return n;
       const { support: _old, ...rest } = n;
       return support ? { ...rest, support } : rest;
+    }),
+  };
+}
+
+/** Liga ou desliga a rótula do nó (todas as barras que chegam a ele ficam rotuladas). */
+export function setNodeHinge(m: Model, id: Id, on: boolean): Model {
+  return {
+    ...m,
+    nodes: m.nodes.map((n) => {
+      if (n.id !== id) return n;
+      const { hinge: _old, ...rest } = n;
+      return on ? { ...rest, hinge: true } : rest;
     }),
   };
 }
@@ -541,6 +553,7 @@ export function mergeNodes(m: Model, keep: Id, drop: Id): Model {
   const merged: Node = { id: k.id, x: k.x, y: k.y };
   const support = k.support ?? d.support;
   if (support) merged.support = support;
+  if (k.hinge || d.hinge) merged.hinge = true;
   if (k.load || d.load) {
     const a = k.load ?? { fx: 0, fy: 0, mz: 0 };
     const b = d.load ?? { fx: 0, fy: 0, mz: 0 };

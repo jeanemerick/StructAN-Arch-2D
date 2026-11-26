@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { FigAxes, FigBarTypes, FigProjection, FigSigns, FigSupports, FigThermal } from './figures';
+import { FigAxes, FigBarTypes, FigHinges, FigProjection, FigSigns, FigSupports, FigThermal } from './figures';
 
 /** Seção do manual: título no índice e conteúdo. A busca percorre o texto renderizado. */
 export interface HelpSection {
@@ -91,7 +91,7 @@ export const MANUAL: HelpSection[] = [
           <li>
             Selecione o arco e, em Inserir nó, digite x = 3 e tecle <K>Enter</K>: o fecho passa a ser um nó.
           </li>
-          <li>Selecione o trecho da esquerda e marque a rótula "no fim". Apoie as duas nascenças em 2º gênero.</li>
+          <li>Selecione o nó do fecho e marque <b>Rótula no nó</b>. Apoie as duas nascenças em 2º gênero.</li>
           <li>
             Nos dois trechos, adicione carga vertical de −10 kN/m <b>por projeção</b>. Resultado esperado: H = qL²/(8f) = 30 kN e M ≈ 0. O exemplo "Arco triarticulado com carga em
             faixa" traz este modelo pronto.
@@ -214,9 +214,21 @@ export const MANUAL: HelpSection[] = [
           </li>
         </ul>
         <h4>Rótulas</h4>
+        <FigHinges />
+        <p>A rótula libera a rotação relativa entre a barra e o nó. Há duas maneiras de atribuí-la, com desenhos diferentes:</p>
+        <ul>
+          <li>
+            <b>Pelo nó</b> (painel do nó, <b>Rótula no nó</b>): todas as barras e arcos que chegam ao nó ficam rotulados nele. O desenho é uma bolinha vazia única, centrada no nó
+            — é o caso do fecho de um arco triarticulado. Com vários nós selecionados, os botões <b>Rotular os nós</b> e <b>Tirar a rótula dos nós</b> valem para todos.
+          </li>
+          <li>
+            <b>Pela extremidade da barra</b> (painel da barra, rótula no início ou no fim): só aquela barra fica rotulada; as demais continuam ligadas rigidamente ao nó. O desenho
+            é uma bolinha vazia na ponta da própria barra, afastada do nó — é o caso de um tirante preso a um pilar contínuo: o pilar segue inteiro e cada tirante tem a sua rótula.
+          </li>
+        </ul>
         <p>
-          Cada barra tem rótula opcional no início e no fim. Rótula libera a rotação daquela ponta da barra em relação ao nó. Quando todas as barras chegam rotuladas a um nó, o
-          programa trava a rotação desse nó (que não teria rigidez nenhuma) e avisa se houver momento aplicado ali.
+          O nó sem rótula é desenhado como uma bolinha cheia. Numa barra que chega a um nó rotulado, a rótula da extremidade aparece marcada "(do nó)" e não se repete no desenho.
+          Quando todas as barras chegam rotuladas a um nó, o programa trava a rotação desse nó (que não teria rigidez nenhuma) e avisa se houver momento aplicado ali.
         </p>
         <h4>Tipos de barra</h4>
         <FigBarTypes />
@@ -388,8 +400,9 @@ export const MANUAL: HelpSection[] = [
         <h4>Onde pôr rótulas</h4>
         <ul>
           <li>Treliça: prefira o tipo Somente axial; as barras já ficam birrotuladas.</li>
-          <li>Arco triarticulado: insira o nó do fecho e marque a rótula no fim do trecho da esquerda (basta numa das barras que chegam ao nó).</li>
-          <li>Viga Gerber: rótula na ponta de uma das barras que chegam ao nó da articulação.</li>
+          <li>Arco triarticulado: insira o nó do fecho e marque Rótula no nó.</li>
+          <li>Viga Gerber: Rótula no nó da articulação (com só duas barras, a rótula na ponta de uma delas dá o mesmo resultado).</li>
+          <li>Barra presa a uma peça que continua inteira (tirante num pilar, escora numa viga): rótula na extremidade da barra, não no nó.</li>
         </ul>
         <h4>Número de segmentos do arco</h4>
         <p>
@@ -475,7 +488,7 @@ export const MANUAL: HelpSection[] = [
             </tr>
             <tr>
               <td>O momento aplicado no nó … é ignorado: todas as barras chegam rotuladas nele</td>
-              <td>Tire a rótula de uma das barras ou aplique o momento em outro ponto.</td>
+              <td>Tire a rótula do nó (ou a de uma das barras) ou aplique o momento em outro ponto.</td>
             </tr>
           </tbody>
         </table>

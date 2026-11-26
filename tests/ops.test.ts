@@ -32,9 +32,9 @@ function okArc(m: Model, expr: string, xi: number, xj: number, nSeg = 40) {
 }
 
 describe('modelo vazio e seções', () => {
-  it('emptyModel tem versão 2 e uma seção padrão de 25 GPa, 20×40 cm, α = 1,0×10⁻⁵', () => {
+  it('emptyModel tem versão 3 e uma seção padrão de 25 GPa, 20×40 cm, α = 1,0×10⁻⁵', () => {
     const m = emptyModel();
-    expect(m.version).toBe(2);
+    expect(m.version).toBe(3);
     expect(m.sections[0].alpha).toBe(1e-5);
     expect(m.nodes).toEqual([]);
     expect(m.members).toEqual([]);

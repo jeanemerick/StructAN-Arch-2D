@@ -41,7 +41,9 @@ Outros atalhos: **F** enquadra o modelo, **Del** exclui a seleção, **Ctrl+A** 
 - **Grade**: passo livre (0,01; 0,1; 2,5…). Com o snap desligado, o clique é arredondado ao milímetro; coordenadas digitadas ficam como foram digitadas.
 - **Ligação automática**: um nó que cai sobre uma barra ou um arco (por clique, por coordenadas ou ao ser movido) passa a ficar ligado a ele; sobre outro nó, os dois se fundem. Carga ou apoio num nó sem barra é erro e impede a análise.
 
-No painel de um **nó**: coordenadas, apoio (livre, 1º gênero vertical ou horizontal, 2º gênero, engaste ou combinação livre de X, Y e rotação), molas, recalques e carga nodal (Fx, Fy, Mz).
+No painel de um **nó**: coordenadas, **rótula no nó**, apoio (livre, 1º gênero vertical ou horizontal, 2º gênero, engaste ou combinação livre de X, Y e rotação), molas, recalques e carga nodal (Fx, Fy, Mz).
+
+**Rótulas**: pelo nó (todas as barras que chegam a ele ficam rotuladas; desenho: uma bolinha vazia única no nó) ou pela extremidade de uma barra (só ela fica rotulada; desenho: bolinha vazia na ponta da barra, afastada do nó — como um tirante preso a um pilar contínuo). Nó sem rótula é desenhado como bolinha cheia.
 
 No painel de uma **barra ou arco**: tipo de barra, seção, rótulas, cargas distribuídas (uniformes ou lineares; vertical ou horizontal global, por comprimento ou por projeção; normal ou tangente ao eixo), temperatura das faces e inserção de nó.
 
@@ -54,7 +56,7 @@ Os resultados aparecem nas abas sob o desenho (**Reações, Normal N, Cortante Q
 
 As cargas distribuídas em direção global são desenhadas em **faixas retas** (a vertical acima do elemento, a horizontal ao lado), com a altura das setas proporcional à intensidade por metro de projeção. A opção **Cargas sobre o eixo** volta ao desenho antigo.
 
-O modelo fica gravado no navegador automaticamente; **Salvar** e **Abrir** trabalham com arquivos `.json` (versão 2; arquivos da versão 1 abrem e são convertidos). Novo, Abrir e Exemplos pedem confirmação na própria página quando há alterações. **Exportar** gera a imagem da vista atual (PNG) e a tabela de esforços e deslocamentos (CSV com `;` e vírgula decimal, pronta para planilhas).
+O modelo fica gravado no navegador automaticamente; **Salvar** e **Abrir** trabalham com arquivos `.json` (versão 3; arquivos das versões 1 e 2 abrem e são convertidos). Novo, Abrir e Exemplos pedem confirmação na própria página quando há alterações. **Exportar** gera a imagem da vista atual (PNG) e a tabela de esforços e deslocamentos (CSV com `;` e vírgula decimal, pronta para planilhas).
 
 ## Arcos
 
@@ -70,7 +72,7 @@ sqrt(25-x^2)                semicírculo de raio 5 m (x de -5 a 5)
 -10*cosh(x/10)              catenária invertida
 ```
 
-Arco triarticulado: crie o arco, insira um nó no fecho (painel do arco → Inserir nó) e marque a rótula no fim do primeiro trecho. Arco atirantado: ligue as nascenças com uma barra **Somente axial** e apoie uma delas num apoio de 1º gênero.
+Arco triarticulado: crie o arco, insira um nó no fecho (painel do arco → Inserir nó), selecione esse nó e marque **Rótula no nó**. Arco atirantado: ligue as nascenças com uma barra **Somente axial** e apoie uma delas num apoio de 1º gênero.
 
 ### Como o arco é calculado
 

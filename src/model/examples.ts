@@ -1,5 +1,5 @@
 import type { Model } from './types';
-import { addArc, addArcBetween, addBar, addNode, addSection, emptyModel, setNodalLoad, setSupport, splitMember, updateMember, updateSection } from './ops';
+import { addArc, addArcBetween, addBar, setNodeHinge, addNode, addSection, emptyModel, setNodalLoad, setSupport, splitMember, updateMember, updateSection } from './ops';
 import { parabola } from './presets';
 
 const FIX = { rx: true, ry: true, rz: true };
@@ -61,9 +61,10 @@ function arcoTriarticulado(): Model {
   const r = arcOrThrow(addArc(m, { expr: parabola(0, 0, 20, 5), xi: 0, xj: 20, nSeg: 40, sectionId: 's1' }));
   const arc = r.model.members[0];
   const s = splitMember(r.model, r.id, 10);
-  m = s.model;
+  // rótula do fecho atribuída pelo nó
+  m = setNodeHinge(s.model, s.nodeId, true);
   const [left] = m.members;
-  m = updateMember(m, left.id, { hingeJ: true, loads: [projQ(-10)] });
+  m = updateMember(m, left.id, { loads: [projQ(-10)] });
   m = setSupport(m, arc.ni, PIN);
   return setSupport(m, arc.nj, PIN);
 }
@@ -87,9 +88,10 @@ function arcoTriarticuladoFaixa(): Model {
   const r = arcOrThrow(addArcBetween(m, { pi: { x: 0, y: 0 }, pj: { x: 6, y: 0 }, shape: 'parabola', rise: 1.5, nSeg: 40, sectionId: 's1' }));
   const arc = r.model.members[0];
   const s = splitMember(r.model, r.id, 3);
-  m = s.model;
+  // rótula do fecho (C) atribuída pelo nó
+  m = setNodeHinge(s.model, s.nodeId, true);
   const [left, right] = m.members;
-  m = updateMember(m, left.id, { hingeJ: true, loads: [projQ(-10)] });
+  m = updateMember(m, left.id, { loads: [projQ(-10)] });
   m = updateMember(m, right.id, { loads: [projQ(-10)] });
   m = setSupport(m, arc.ni, PIN);
   return setSupport(m, arc.nj, PIN);

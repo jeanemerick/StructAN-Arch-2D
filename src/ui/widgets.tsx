@@ -94,11 +94,25 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export function Check({ checked, onChange, children, testid }: { checked: boolean; onChange(v: boolean): void; children: ReactNode; testid?: string }) {
+export function Check({
+  checked,
+  onChange,
+  children,
+  testid,
+  disabled,
+  title,
+}: {
+  checked: boolean;
+  onChange(v: boolean): void;
+  children: ReactNode;
+  testid?: string;
+  disabled?: boolean;
+  title?: string;
+}) {
   const autoId = useId();
   return (
-    <label className="check">
-      <input type="checkbox" id={testid ?? autoId} checked={checked} data-testid={testid} onChange={(e) => onChange(e.target.checked)} />
+    <label className="check" title={title}>
+      <input type="checkbox" id={testid ?? autoId} checked={checked} disabled={disabled} data-testid={testid} onChange={(e) => onChange(e.target.checked)} />
       {children}
     </label>
   );

@@ -1,4 +1,4 @@
-import { Arrow, HingeGlyph, Label, MomentArrow, SupportGlyph } from '../glyphs';
+import { Arrow, HingeGlyph, Label, MomentArrow, NodeGlyph, SupportGlyph } from '../glyphs';
 import type { Support } from '../../model/types';
 
 /** Figuras do manual, em SVG e com as cores do tema. */
@@ -167,6 +167,37 @@ export function FigBarTypes() {
         EI
       </Label>
       <Label x={455} y={86}>Somente flexão</Label>
+    </svg>
+  );
+}
+
+/** Nó comum, rótula atribuída pelo nó e rótulas nas extremidades das barras. */
+export function FigHinges() {
+  const bar = (x1: number, y1: number, x2: number, y2: number, w = 2.4) => <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--member)" strokeWidth={w} />;
+  return (
+    <svg viewBox="0 0 600 200" className="help-fig" role="img" aria-label="Nó comum, rótula no nó e rótulas nas extremidades das barras">
+      {/* nó comum */}
+      {bar(30, 70, 100, 70)}
+      {bar(100, 70, 170, 70)}
+      {bar(100, 70, 100, 140)}
+      <NodeGlyph p={{ x: 100, y: 70 }} hinge={false} highlight={false} />
+      <Label x={100} y={172}>nó comum (rígido)</Label>
+      {/* rótula atribuída pelo nó */}
+      {bar(220, 110, 300, 60)}
+      {bar(300, 60, 380, 110)}
+      {bar(300, 60, 300, 140)}
+      <NodeGlyph p={{ x: 300, y: 60 }} hinge highlight={false} />
+      <Label x={300} y={172}>rótula no nó: uma só</Label>
+      {/* rótulas nas extremidades: pilar contínuo e dois tirantes */}
+      {bar(500, 30, 500, 150)}
+      {bar(420, 80, 500, 80, 1.3)}
+      {bar(500, 80, 580, 80, 1.3)}
+      <HingeGlyph p={{ x: 500, y: 80 }} dir={{ x: -1, y: 0 }} />
+      <HingeGlyph p={{ x: 500, y: 80 }} dir={{ x: 1, y: 0 }} />
+      <HingeGlyph p={{ x: 420, y: 80 }} dir={{ x: 1, y: 0 }} />
+      <HingeGlyph p={{ x: 580, y: 80 }} dir={{ x: -1, y: 0 }} />
+      <NodeGlyph p={{ x: 500, y: 80 }} hinge={false} highlight={false} />
+      <Label x={500} y={172}>rótulas nas pontas dos tirantes</Label>
     </svg>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, type Dispatch } from 'react';
 import type { Model, Node, Support } from '../../model/types';
-import { connectNode, deleteNode, membersThrough, moveNode, nodeNear, setNodalLoad, setSupport } from '../../model/ops';
+import { connectNode, deleteNode, membersThrough, moveNode, nodeNear, setNodalLoad, setNodeHinge, setSupport } from '../../model/ops';
 import type { Action } from '../state';
 import { Check, Field, NumField } from '../widgets';
 import { UNIT } from '../format';
@@ -94,6 +94,15 @@ export function NodePanel({ node, model, dispatch }: { node: Node; model: Model;
           </button>
         </div>
       )}
+
+      <h4>Rótula</h4>
+      <Check checked={!!node.hinge} testid="node-hinge" onChange={(on) => apply((m) => setNodeHinge(m, node.id, on))}>
+        Rótula no nó
+      </Check>
+      <p className="help">
+        Todas as barras e arcos que chegam ao nó ficam rotulados nele; o desenho é uma bolinha vazia única. Para rotular só uma barra, marque a rótula na extremidade dela, no painel
+        da barra.
+      </p>
 
       <h4>Apoio</h4>
       <div className="chips">

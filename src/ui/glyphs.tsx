@@ -182,6 +182,29 @@ export function SupportGlyph({ p, s, color = 'var(--member)' }: { p: Pt; s: Supp
 }
 
 /** Rótula desenhada sobre a barra, perto do nó (dir: unitário da barra saindo do nó, em pixels). */
-export function HingeGlyph({ p, dir }: { p: Pt; dir: Pt }) {
-  return <circle cx={p.x + dir.x * 8} cy={p.y + dir.y * 8} r={4.2} fill="var(--glyph-fill)" stroke="var(--member)" strokeWidth={1.6} />;
+/** Rótula na extremidade de uma barra: bolinha vazia na ponta da barra, afastada do nó ao longo dela. */
+export function HingeGlyph({ p, dir, color = 'var(--member)', testid }: { p: Pt; dir: Pt; color?: string; testid?: string }) {
+  return <circle cx={p.x + dir.x * 9} cy={p.y + dir.y * 9} r={4.2} fill="var(--glyph-fill)" stroke={color} strokeWidth={1.6} data-hinge={testid} />;
+}
+
+/**
+ * Nó no desenho: bolinha cheia para o nó comum; bolinha vazia (maior) para o nó rotulado, que
+ * representa uma rótula única para todas as barras que chegam a ele.
+ */
+export function NodeGlyph({ p, hinge, highlight, id }: { p: Pt; hinge: boolean; highlight: boolean; id?: string }) {
+  if (hinge) {
+    return (
+      <circle
+        cx={p.x}
+        cy={p.y}
+        r={highlight ? 6.2 : 5.4}
+        fill="var(--glyph-fill)"
+        stroke={highlight ? 'var(--selected)' : 'var(--member)'}
+        strokeWidth={highlight ? 2.4 : 1.8}
+        data-node={id}
+        data-node-kind="rotula"
+      />
+    );
+  }
+  return <circle cx={p.x} cy={p.y} r={highlight ? 5 : 3.4} fill={highlight ? 'var(--selected)' : 'var(--member)'} stroke="none" data-node={id} data-node-kind="no" />;
 }

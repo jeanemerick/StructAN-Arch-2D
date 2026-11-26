@@ -189,11 +189,23 @@ export function MemberPanel({ member, model, dispatch }: { member: Member; model
           <span className="help">nas duas pontas (barra somente axial)</span>
         ) : (
           <>
-            <Check checked={member.hingeI} testid="hinge-i" onChange={(v) => apply((m) => updateMember(m, member.id, { hingeI: v }))}>
-              no início
+            <Check
+              checked={member.hingeI || !!ni.hinge}
+              disabled={!!ni.hinge}
+              title={ni.hinge ? `A rótula vem do nó ${ni.id}` : undefined}
+              testid="hinge-i"
+              onChange={(v) => apply((m) => updateMember(m, member.id, { hingeI: v }))}
+            >
+              no início{ni.hinge ? ' (do nó)' : ''}
             </Check>
-            <Check checked={member.hingeJ} testid="hinge-j" onChange={(v) => apply((m) => updateMember(m, member.id, { hingeJ: v }))}>
-              no fim
+            <Check
+              checked={member.hingeJ || !!nj.hinge}
+              disabled={!!nj.hinge}
+              title={nj.hinge ? `A rótula vem do nó ${nj.id}` : undefined}
+              testid="hinge-j"
+              onChange={(v) => apply((m) => updateMember(m, member.id, { hingeJ: v }))}
+            >
+              no fim{nj.hinge ? ' (do nó)' : ''}
             </Check>
           </>
         )}

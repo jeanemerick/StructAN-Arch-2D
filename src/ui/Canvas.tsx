@@ -5,7 +5,8 @@ import { resolveClickNode, snapPoint } from './picking';
 import type { Analysis } from '../solver/analyze';
 import { isSelected, type Action, type UiState } from './state';
 import { fitView, hitTest, itemsInWindow, memberPolyline, modelBounds, toScreen, toWorld, zoomAt, type Pt, type ViewT } from './geometry';
-import { Arrow, HingeGlyph, Label, MomentArrow, SupportGlyph } from './glyphs';
+import { Arrow, HingeGlyph, Label, MomentArrow, NodeGlyph, SupportGlyph } from './glyphs';
+import { hingeMarks } from './hinges';
 import { formatValue } from './format';
 import { ResultsLayer, type HoverInfo } from './ResultsLayer';
 import { computeLoadBands } from './loadBands';
@@ -241,22 +242,19 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
       content.push(<ResultsLayer key="res" model={model} analysis={analysis} view={state.view} v={v} scale={state.scale} showValues={state.showValues} showReactions={state.showReactions} hoverPx={cursor ? toScreen(v, cursor.x, cursor.y) : null} onHover={setHover} height={size.h} />);
     }
     if (!resultsView) content.push(<LoadsLayer key="loads" model={model} v={v} polylines={polylines} onAxis={state.loadsOnAxis} />);
-    // rótulas
-    for (const k of model.members) {
-      const pts = polylines.get(k.id) ?? [];
+    // rótulas de extremidade de barra (as dos nós rotulados são o próprio desenho do nó)
+    const hinges = hingeMarks(model);
+    for (const h of hinges.ends) {
+      const pts = polylines.get(h.memberId) ?? [];
       if (pts.length < 2) continue;
-      const axial = k.behavior === 'axial';
-      const ends: [boolean, Pt, Pt][] = [
-        [axial || k.hingeI, pts[0], pts[1]],
-        [axial || k.hingeJ, pts[pts.length - 1], pts[pts.length - 2]],
-      ];
-      ends.forEach(([on, a, b], i) => {
-        if (!on) return;
-        const A = toScreen(v, a.x, a.y);
-        const B = toScreen(v, b.x, b.y);
-        const L = Math.hypot(B.x - A.x, B.y - A.y) || 1;
-        content.push(<HingeGlyph key={`h-${k.id}-${i}`} p={A} dir={{ x: (B.x - A.x) / L, y: (B.y - A.y) / L }} />);
-      });
+      const [a, b] = h.end === 'i' ? [pts[0], pts[1]] : [pts[pts.length - 1], pts[pts.length - 2]];
+      const A = toScreen(v, a.x, a.y);
+      const B = toScreen(v, b.x, b.y);
+      const L = Math.hypot(B.x - A.x, B.y - A.y) || 1;
+      const sel = isSelected(selection, 'member', h.memberId);
+      content.push(
+        <HingeGlyph key={`h-${h.memberId}-${h.end}`} p={A} dir={{ x: (B.x - A.x) / L, y: (B.y - A.y) / L }} color={sel ? 'var(--selected)' : undefined} testid="extremidade" />,
+      );
     }
     // apoios e nós
     for (const n of model.nodes) {
@@ -265,20 +263,8 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
     }
     for (const n of model.nodes) {
       const p = toScreen(v, n.x, n.y);
-      const isSel = isSelected(selection, 'node', n.id);
-      const isStart = barStart === n.id;
-      content.push(
-        <circle
-          key={`n-${n.id}`}
-          cx={p.x}
-          cy={p.y}
-          r={isSel || isStart ? 5.5 : 3.6}
-          fill={isSel || isStart ? 'var(--selected)' : 'var(--glyph-fill)'}
-          stroke={isSel || isStart ? 'var(--selected)' : 'var(--member)'}
-          strokeWidth={1.6}
-          data-node={n.id}
-        />,
-      );
+      const hl = isSelected(selection, 'node', n.id) || barStart === n.id;
+      content.push(<NodeGlyph key={`n-${n.id}`} p={p} hinge={!!n.hinge} highlight={hl} id={n.id} />);
     }
     // pré-visualizações
     if (draftArc && draftArc.length > 1) {

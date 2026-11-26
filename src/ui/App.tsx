@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import type { Issue, Model } from '../model/types';
-import { addArc, addArcBetween, deleteMember, deleteNode, duplicate, emptyModel, placeNode, suggestOffset } from '../model/ops';
+import { addArc, addArcBetween, deleteMember, deleteNode, duplicate, emptyModel, placeNode, setNodeHinge, suggestOffset } from '../model/ops';
 import { parseModel, serialize } from '../model/io';
 import { examples } from '../model/examples';
 import { analyze, type Analysis } from '../solver/analyze';
@@ -335,6 +335,30 @@ export default function App() {
       <div data-testid="multi-panel">
         <h3>Seleção</h3>
         <p className="help">{describeSelection(model, state.selection)} selecionados. Shift+clique soma ou retira itens; Esc limpa a seleção.</p>
+        {state.selection.nodes.length > 0 && (
+          <div className="row">
+            <button
+              className="btn outline"
+              data-testid="multi-hinge-on"
+              onClick={() => {
+                const ids = state.selection.nodes;
+                dispatch({ type: 'apply', fn: (m) => ids.reduce((acc, id) => setNodeHinge(acc, id, true), m) });
+              }}
+            >
+              Rotular os nós
+            </button>
+            <button
+              className="btn outline"
+              data-testid="multi-hinge-off"
+              onClick={() => {
+                const ids = state.selection.nodes;
+                dispatch({ type: 'apply', fn: (m) => ids.reduce((acc, id) => setNodeHinge(acc, id, false), m) });
+              }}
+            >
+              Tirar a rótula dos nós
+            </button>
+          </div>
+        )}
         <div className="row">
           <button className="btn primary" data-testid="multi-duplicate" onClick={openDuplicate}>
             Duplicar… (Ctrl+D)

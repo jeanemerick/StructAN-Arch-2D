@@ -105,6 +105,9 @@ check(pngBytes.length > 5000 && pngBytes[1] === 0x50 && pngBytes[2] === 0x4e, `P
 // D1: arco da imagem 1 com a carga em faixa reta; opção de vista volta ao desenho antigo
 await openExample('arco-triarticulado-faixa');
 check((await count('[data-testid=load-band]')) === 1, 'carga do arco desenhada numa faixa reta só');
+// rótula do fecho atribuída pelo nó: uma bolinha vazia única; nenhuma rótula de extremidade
+check((await count('[data-node-kind=rotula]')) === 1 && (await count('[data-hinge=extremidade]')) === 0, 'arco: rótula do fecho desenhada como rótula única no nó');
+check((await count('[data-node-kind=no]')) === 2, 'nós comuns desenhados como bolinha cheia');
 await page.screenshot({ path: join(outDir, 'arco-faixa.png') });
 await page.check('[data-testid=loads-on-axis]');
 check((await count('[data-testid=load-band]')) === 0, 'opção "Cargas sobre o eixo" volta ao desenho antigo');
@@ -113,6 +116,17 @@ await page.click('[data-testid=tab-reactions]');
 const H2 = parsePt(await page.textContent('[data-testid=reaction-n1-fx]'));
 check(Math.abs(H2 / 30 - 1) < 0.001, `arco da imagem 1: H = ${H2} kN (esperado 30)`);
 await page.click('[data-testid=tab-model]');
+
+// rótulas nas pontas dos tirantes do pórtico: pilar central contínuo, uma rótula por tirante
+await openExample('portico-duas-aguas-tirantes');
+check((await count('[data-node-kind=rotula]')) === 0 && (await count('[data-hinge=extremidade]')) === 4, 'pórtico: uma rótula na ponta de cada tirante (4) e nenhuma rótula de nó');
+// rótula atribuída pelo nó no painel: o nó do meio do pilar central vira rótula única
+const central = await page.locator('[data-node=n5]').boundingBox();
+await page.mouse.click(central.x + central.width / 2, central.y + central.height / 2);
+await page.check('[data-testid=node-hinge]');
+check((await count('[data-node-kind=rotula]')) === 1 && (await count('[data-hinge=extremidade]')) === 2, 'Rótula no nó: rótula única no nó e as dos tirantes ali não se repetem');
+check((await status()) === 'Análise concluída', 'pórtico com rótula no nó analisado');
+await page.screenshot({ path: join(outDir, 'portico-rotula-no.png') });
 
 // C2 + C3 + C4: nó por coordenadas e arco entre dois nós, tudo com Enter
 await page.click('[data-testid=file-new]');

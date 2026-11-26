@@ -114,8 +114,9 @@ export function parseModel(text: string): { ok: true; model: Model } | { ok: fal
   }
   try {
     if (!isObj(raw)) throw new FormatError('Conteúdo do arquivo inválido');
-    // versão 1 (primeira etapa): sem tipo de barra, temperatura nem α; é migrada ao abrir
-    if (raw.version !== 1 && raw.version !== 2) throw new FormatError('Versão do arquivo não suportada');
+    // versão 1 (primeira etapa): sem tipo de barra, temperatura nem α; versão 2: sem rótula no nó.
+    // As duas são migradas ao abrir.
+    if (raw.version !== 1 && raw.version !== 2 && raw.version !== 3) throw new FormatError('Versão do arquivo não suportada');
     const v1 = raw.version === 1;
     if (!Array.isArray(raw.nodes) || !Array.isArray(raw.members) || !Array.isArray(raw.sections)) {
       throw new FormatError('O arquivo precisa das listas nodes, members e sections');
@@ -139,6 +140,7 @@ export function parseModel(text: string): { ok: true; model: Model } | { ok: fal
       if (sup) out.support = sup;
       const load = parseLoad(n.load, `${w}.load`);
       if (load) out.load = load;
+      if (n.hinge !== undefined && bool(n.hinge, `${w}.hinge`)) out.hinge = true;
       return out;
     });
     const nodeIds = new Set(nodes.map((n) => n.id));
@@ -183,7 +185,7 @@ export function parseModel(text: string): { ok: true; model: Model } | { ok: fal
       members.map((k) => k.id),
       'barras',
     );
-    return { ok: true, model: { version: 2, nodes, members, sections } };
+    return { ok: true, model: { version: 3, nodes, members, sections } };
   } catch (e) {
     if (e instanceof FormatError) return { ok: false, error: e.message };
     throw e;

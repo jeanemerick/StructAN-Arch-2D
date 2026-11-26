@@ -138,8 +138,13 @@ export function buildMesh(model: Model): Mesh {
 
   const penalty = (EI: number, Lm: number) => (INEXTENSIBLE_PENALTY * 12 * EI) / (Lm * Lm);
 
+  // rótula atribuída pelo nó: libera a ponta de todas as barras que chegam a ele
+  const hingedNode = (id: Id) => !!byId.get(id)?.hinge;
+
   for (const mem of model.members) {
     const sec = sections.get(mem.sectionId)!;
+    const relI = mem.hingeI || hingedNode(mem.ni);
+    const relJ = mem.hingeJ || hingedNode(mem.nj);
     const props = sectionProps(sec);
     const EI = props.EI;
     let EA = props.EA;
@@ -159,7 +164,7 @@ export function buildMesh(model: Model): Mesh {
       const e = pushElem(
         a,
         b,
-        { EA, EI: axial ? 0 : EI, relA: axial || mem.hingeI, relB: axial || mem.hingeJ, memberId: mem.id, behavior, ...thermal },
+        { EA, EI: axial ? 0 : EI, relA: axial || relI, relB: axial || relJ, memberId: mem.id, behavior, ...thermal },
         (c, s) => localLoad(mem.loads, c, s, (l) => l.qi, (l) => l.qj),
       );
       memberElems.set(mem.id, [e]);
@@ -189,7 +194,7 @@ export function buildMesh(model: Model): Mesh {
       const e = pushElem(
         n1,
         n2,
-        { EA, EI, relA: k === 0 && mem.hingeI, relB: k === mem.nSeg - 1 && mem.hingeJ, memberId: mem.id, behavior, ...thermal },
+        { EA, EI, relA: k === 0 && relI, relB: k === mem.nSeg - 1 && relJ, memberId: mem.id, behavior, ...thermal },
         (c, s) =>
           localLoad(
             mem.loads,

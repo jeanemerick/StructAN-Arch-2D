@@ -19,7 +19,7 @@ describe('arquivo JSON', () => {
   it('rejeita texto que não é JSON, versão desconhecida e nó inexistente', () => {
     expect(parseModel('isto não é json').ok).toBe(false);
     const m = examples[0].build();
-    expect(parseModel(JSON.stringify({ ...m, version: 3 })).ok).toBe(false);
+    expect(parseModel(JSON.stringify({ ...m, version: 4 })).ok).toBe(false);
     const broken = { ...m, members: m.members.map((k, i) => (i === 0 ? { ...k, nj: 'n999' } : k)) };
     const r = parseModel(JSON.stringify(broken));
     expect(r.ok).toBe(false);

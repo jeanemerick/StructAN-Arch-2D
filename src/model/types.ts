@@ -32,6 +32,8 @@ export interface Node {
   y: number;
   support?: Support;
   load?: NodalLoad;
+  /** Rótula atribuída pelo nó: todas as barras e arcos que chegam a ele ficam rotulados nele. */
+  hinge?: boolean;
 }
 
 /**
@@ -130,7 +132,7 @@ export interface Arc extends MemberBase {
 export type Member = Bar | Arc;
 
 export interface Model {
-  version: 2;
+  version: 3;
   nodes: Node[];
   members: Member[];
   sections: Section[];
