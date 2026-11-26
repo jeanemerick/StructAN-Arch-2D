@@ -227,7 +227,8 @@ export const MANUAL: HelpSection[] = [
           </li>
         </ul>
         <p>
-          O nó sem rótula é desenhado como uma bolinha cheia. Numa barra que chega a um nó rotulado, a rótula da extremidade aparece marcada "(do nó)" e não se repete no desenho.
+          O nó sem rótula é desenhado como uma bolinha cheia. No apoio de 2º ou de 1º gênero onde chega uma só barra, o nó aparece como bolinha vazia: é a articulação do
+          próprio apoio (como A e B de um arco triarticulado), e não muda o cálculo. Numa barra que chega a um nó rotulado, a rótula da extremidade aparece marcada "(do nó)" e não se repete no desenho.
           Quando todas as barras chegam rotuladas a um nó, o programa trava a rotação desse nó (que não teria rigidez nenhuma) e avisa se houver momento aplicado ali.
         </p>
         <h4>Tipos de barra</h4>
@@ -588,7 +589,7 @@ export const MANUAL: HelpSection[] = [
         <p>H = qL²/(8f) = 30 kN; R_A = R_B = 30 kN; M ≈ 0 em todo o arco; N = −30 kN no fecho e −42,43 kN nas nascenças.</p>
         <h4>Pórtico de duas águas com tirantes (exemplo pronto)</h4>
         <p>
-          Três pilares engastados de 4 m, águas somente flexão, dois tirantes somente axiais, 10 kN/m na água esquerda (por projeção), 5 kN/m no pilar direito e recalque de 1 cm no
+          Três pilares engastados de 4 m, pilares e águas somente flexão (EI), dois tirantes somente axiais (EA), 10 kN/m na água esquerda (por projeção), 5 kN/m no pilar direito e recalque de 1 cm no
           apoio esquerdo. Na vista Reações, a soma das reações verticais dá 40 kN (10 × 4) e a das horizontais, 20 kN (5 × 4): o recalque só acrescenta reações
           autoequilibradas.
         </p>

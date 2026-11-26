@@ -87,7 +87,7 @@ A curva é dividida em trechos retos de **mesmo comprimento de arco** (o que fun
 
 ## Exemplos
 
-No menu **Exemplos**: viga biapoiada, pórtico plano, arco parabólico biarticulado, arco triarticulado, arco atirantado, **arco triarticulado com carga em faixa** (vão 6 m, altura 1,5 m, q = 10 kN/m por projeção: H = 30 kN) e **pórtico de duas águas com tirantes** (águas somente flexão, tirantes somente axiais, 10 kN/m na água esquerda, 5 kN/m no pilar direito e recalque de 1 cm no apoio esquerdo — as cargas da figura de origem são simbólicas).
+No menu **Exemplos**: viga biapoiada, pórtico plano, arco parabólico biarticulado, arco triarticulado, arco atirantado, **arco triarticulado com carga em faixa** (vão 6 m, altura 1,5 m, q = 10 kN/m por projeção: H = 30 kN) e **pórtico de duas águas com tirantes** (pilares e águas somente flexão, tirantes somente axiais com rótula nas pontas, 10 kN/m na água esquerda, 5 kN/m no pilar direito e recalque de 1 cm no apoio esquerdo — as cargas da figura de origem são simbólicas).
 
 ## Limitações desta versão
 

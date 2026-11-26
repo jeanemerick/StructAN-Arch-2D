@@ -130,7 +130,7 @@ describe('B1 — tipo de barra', () => {
     const ex = examples.find((e) => e.slug === 'portico-duas-aguas-tirantes')!;
     const m = ex.build();
     expect(m.members.filter((k) => k.behavior === 'axial')).toHaveLength(2);
-    expect(m.members.filter((k) => k.behavior === 'bending')).toHaveLength(2);
+    expect(m.members.filter((k) => k.behavior === 'bending')).toHaveLength(6);
     const r = ok(analyze(m));
     expect(r.warnings).toHaveLength(0);
     expectEquilibrium(m, r);

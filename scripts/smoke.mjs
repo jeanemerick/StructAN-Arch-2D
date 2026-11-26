@@ -107,7 +107,7 @@ await openExample('arco-triarticulado-faixa');
 check((await count('[data-testid=load-band]')) === 1, 'carga do arco desenhada numa faixa reta só');
 // rótula do fecho atribuída pelo nó: uma bolinha vazia única; nenhuma rótula de extremidade
 check((await count('[data-node-kind=rotula]')) === 1 && (await count('[data-hinge=extremidade]')) === 0, 'arco: rótula do fecho desenhada como rótula única no nó');
-check((await count('[data-node-kind=no]')) === 2, 'nós comuns desenhados como bolinha cheia');
+check((await count('[data-node-kind=articulacao]')) === 2, 'arco: articulação dos apoios A e B desenhada como bolinha vazia');
 await page.screenshot({ path: join(outDir, 'arco-faixa.png') });
 await page.check('[data-testid=loads-on-axis]');
 check((await count('[data-testid=load-band]')) === 0, 'opção "Cargas sobre o eixo" volta ao desenho antigo');
@@ -120,6 +120,7 @@ await page.click('[data-testid=tab-model]');
 // rótulas nas pontas dos tirantes do pórtico: pilar central contínuo, uma rótula por tirante
 await openExample('portico-duas-aguas-tirantes');
 check((await count('[data-node-kind=rotula]')) === 0 && (await count('[data-hinge=extremidade]')) === 4, 'pórtico: uma rótula na ponta de cada tirante (4) e nenhuma rótula de nó');
+check((await count('[data-node-kind=no]')) === 7, 'pórtico: nós sem rótula (inclusive as bases engastadas) como bolinha cheia');
 // rótula atribuída pelo nó no painel: o nó do meio do pilar central vira rótula única
 const central = await page.locator('[data-node=n5]').boundingBox();
 await page.mouse.click(central.x + central.width / 2, central.y + central.height / 2);

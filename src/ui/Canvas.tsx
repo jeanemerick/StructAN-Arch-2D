@@ -261,10 +261,11 @@ export function Canvas({ state, dispatch, analysis, fitKey, draftArc, svgRef, on
       const p = toScreen(v, n.x, n.y);
       if (n.support) content.push(<SupportGlyph key={`s-${n.id}`} p={p} s={n.support} />);
     }
+    const pinned = new Set(hinges.supports);
     for (const n of model.nodes) {
       const p = toScreen(v, n.x, n.y);
       const hl = isSelected(selection, 'node', n.id) || barStart === n.id;
-      content.push(<NodeGlyph key={`n-${n.id}`} p={p} hinge={!!n.hinge} highlight={hl} id={n.id} />);
+      content.push(<NodeGlyph key={`n-${n.id}`} p={p} hinge={!!n.hinge || pinned.has(n.id)} kind={n.hinge ? 'rotula' : pinned.has(n.id) ? 'articulacao' : 'no'} highlight={hl} id={n.id} />);
     }
     // pré-visualizações
     if (draftArc && draftArc.length > 1) {

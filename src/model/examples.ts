@@ -99,14 +99,14 @@ function arcoTriarticuladoFaixa(): Model {
 
 /**
  * Pórtico de duas águas da imagem 2: três pilares engastados de 4 m, espaçados de 4 m; o central
- * sobe até a cumeeira (3 m acima). Águas somente flexão (EI), tirantes somente axiais (EA).
+ * sobe até a cumeeira (3 m acima). Pilares e águas somente flexão (marcados "EI" na figura), tirantes
+ * somente axiais ("EA"), com rótula em cada ponta.
  * Cargas da figura são simbólicas: 10 kN/m vertical por projeção na água esquerda e 5 kN/m
  * horizontal no pilar direito, apontando para a estrutura; recalque de 1 cm (−Y) no apoio esquerdo.
  */
 function porticoDuasAguasTirantes(): Model {
-  let m = updateSection(emptyModel(), 's1', { name: 'Pilar 20×40' });
-  const agua = addSection(m, { name: 'Água (EI = 20 000 kN·m²)', shape: { kind: 'direct', EA: 0, EI: 20000 } });
-  const tir = addSection(agua.model, { name: 'Tirante (EA = 40 000 kN)', shape: { kind: 'direct', EA: 40000, EI: 0 } });
+  let m = updateSection(emptyModel(), 's1', { name: 'EI = 20 000 kN·m²', shape: { kind: 'direct', EA: 0, EI: 20000 } });
+  const tir = addSection(m, { name: 'Tirante (EA = 40 000 kN)', shape: { kind: 'direct', EA: 40000, EI: 0 } });
   m = tir.model;
   const at: Record<string, string> = {};
   for (const [k, x, y] of [
@@ -127,12 +127,12 @@ function porticoDuasAguasTirantes(): Model {
     m = r.model;
     return r.id;
   };
-  bar('A', 'D');
-  bar('B', 'E');
-  bar('E', 'G');
+  const pillars = [bar('A', 'D'), bar('B', 'E'), bar('E', 'G')];
   const right = bar('C', 'F');
-  const slopeL = bar('D', 'G', agua.id);
-  const slopeR = bar('G', 'F', agua.id);
+  pillars.push(right);
+  const slopeL = bar('D', 'G');
+  const slopeR = bar('G', 'F');
+  for (const id of pillars) m = updateMember(m, id, { behavior: 'bending' });
   const tie1 = bar('D', 'E', tir.id);
   const tie2 = bar('E', 'F', tir.id);
   m = updateMember(m, slopeL, { behavior: 'bending', loads: [projQ(-10)] });

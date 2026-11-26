@@ -191,7 +191,7 @@ export function HingeGlyph({ p, dir, color = 'var(--member)', testid }: { p: Pt;
  * Nó no desenho: bolinha cheia para o nó comum; bolinha vazia (maior) para o nó rotulado, que
  * representa uma rótula única para todas as barras que chegam a ele.
  */
-export function NodeGlyph({ p, hinge, highlight, id }: { p: Pt; hinge: boolean; highlight: boolean; id?: string }) {
+export function NodeGlyph({ p, hinge, highlight, id, kind }: { p: Pt; hinge: boolean; highlight: boolean; id?: string; kind?: string }) {
   if (hinge) {
     return (
       <circle
@@ -202,7 +202,7 @@ export function NodeGlyph({ p, hinge, highlight, id }: { p: Pt; hinge: boolean; 
         stroke={highlight ? 'var(--selected)' : 'var(--member)'}
         strokeWidth={highlight ? 2.4 : 1.8}
         data-node={id}
-        data-node-kind="rotula"
+        data-node-kind={kind ?? 'rotula'}
       />
     );
   }

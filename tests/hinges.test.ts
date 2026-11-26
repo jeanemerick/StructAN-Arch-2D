@@ -159,9 +159,18 @@ describe('desenho das rótulas', () => {
     expect(h.ends).toHaveLength(0);
   });
 
-  it('pino de apoio não vira rótula de nó (o apoio de 2º gênero já tem desenho próprio)', () => {
-    const { m } = portal();
-    const h = hingeMarks(setSupport(m, m.nodes[0].id, PIN));
-    expect(h.nodes).toHaveLength(0);
+  it('apoio de 2º gênero com uma barra: articulação desenhada no nó (A e B do arco), sem virar rótula do modelo', () => {
+    const m = examples.find((e) => e.slug === 'arco-triarticulado-faixa')!.build();
+    const h = hingeMarks(m);
+    const A = m.members[0].ni;
+    const B = m.members[m.members.length - 1].nj;
+    expect(h.supports.sort()).toEqual([A, B].sort());
+    expect(m.nodes.filter((q) => q.hinge)).toHaveLength(1);
+    // engaste não é articulação; apoio de 2º gênero onde chegam duas barras rígidas também não
+    const { m: p } = portal();
+    expect(hingeMarks(p).supports).toHaveLength(0);
+    let two = setSupport(p, p.nodes[1].id, PIN);
+    two = setSupport(two, p.nodes[0].id, PIN);
+    expect(hingeMarks(two).supports).toEqual([p.nodes[0].id]);
   });
 });
